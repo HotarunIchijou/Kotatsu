@@ -10,8 +10,8 @@ import okhttp3.Request
 import org.json.JSONObject
 import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.core.db.MangaDatabase
-import org.koitharu.kotatsu.parsers.model.MangaChapter
 import org.koitharu.kotatsu.parsers.util.await
+import org.koitharu.kotatsu.parsers.util.json.getStringOrNull
 import org.koitharu.kotatsu.parsers.util.json.mapJSONNotNull
 import org.koitharu.kotatsu.parsers.util.parseJson
 import org.koitharu.kotatsu.scrobbling.common.data.ScrobblerRepository
@@ -29,7 +29,6 @@ import javax.inject.Singleton
 private const val REDIRECT_URI = "kotatsu://mal-auth"
 private const val BASE_WEB_URL = "https://myanimelist.net"
 private const val BASE_API_URL = "https://api.myanimelist.net/v2"
-private const val AVATAR_STUB = "https://cdn.myanimelist.net/images/questionmark_50.gif"
 
 @Singleton
 class MALRepository @Inject constructor(
@@ -132,9 +131,9 @@ class MALRepository @Inject constructor(
 		saveRate(response, mangaId, scrobblerMangaId)
 	}
 
-	override suspend fun updateRate(rateId: Int, mangaId: Long, chapter: MangaChapter) {
+	override suspend fun updateRate(rateId: Int, mangaId: Long, chapter: Int) {
 		val body = FormBody.Builder()
-			.add("num_chapters_read", chapter.number.toString())
+			.add("num_chapters_read", chapter.toString())
 		val url = BASE_API_URL.toHttpUrl().newBuilder()
 			.addPathSegment("manga")
 			.addPathSegment(rateId.toString())
@@ -151,7 +150,8 @@ class MALRepository @Inject constructor(
 	override suspend fun updateRate(rateId: Int, mangaId: Long, rating: Float, status: String?, comment: String?) {
 		val body = FormBody.Builder()
 			.add("status", status.toString())
-			.add("score", rating.toString())
+			.add("score", rating.toInt().toString())
+			.add("comments", comment.orEmpty())
 		val url = BASE_API_URL.toHttpUrl().newBuilder()
 			.addPathSegment("manga")
 			.addPathSegment(rateId.toString())
@@ -209,7 +209,7 @@ class MALRepository @Inject constructor(
 	private fun MALUser(json: JSONObject) = ScrobblerUser(
 		id = json.getLong("id"),
 		nickname = json.getString("name"),
-		avatar = json.getString("picture") ?: AVATAR_STUB,
+		avatar = json.getStringOrNull("picture"),
 		service = ScrobblerService.MAL,
 	)
 

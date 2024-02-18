@@ -25,6 +25,7 @@ import okio.FileNotFoundException
 import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.bookmarks.domain.Bookmark
 import org.koitharu.kotatsu.bookmarks.domain.BookmarksRepository
+import org.koitharu.kotatsu.core.model.findById
 import org.koitharu.kotatsu.core.model.getPreferredBranch
 import org.koitharu.kotatsu.core.parser.MangaIntent
 import org.koitharu.kotatsu.core.prefs.AppSettings
@@ -42,6 +43,7 @@ import org.koitharu.kotatsu.details.domain.BranchComparator
 import org.koitharu.kotatsu.details.domain.DetailsInteractor
 import org.koitharu.kotatsu.details.domain.DetailsLoadUseCase
 import org.koitharu.kotatsu.details.domain.ProgressUpdateUseCase
+import org.koitharu.kotatsu.details.domain.ReadingTimeUseCase
 import org.koitharu.kotatsu.details.domain.RelatedMangaUseCase
 import org.koitharu.kotatsu.details.ui.model.ChapterListItem
 import org.koitharu.kotatsu.details.ui.model.HistoryInfo
@@ -76,6 +78,7 @@ class DetailsViewModel @Inject constructor(
 	private val extraProvider: ListExtraProvider,
 	private val detailsLoadUseCase: DetailsLoadUseCase,
 	private val progressUpdateUseCase: ProgressUpdateUseCase,
+	private val readingTimeUseCase: ReadingTimeUseCase,
 ) : BaseViewModel() {
 
 	private val intent = MangaIntent(savedStateHandle)
@@ -169,10 +172,21 @@ class DetailsViewModel @Inject constructor(
 	val branches: StateFlow<List<MangaBranch>> = combine(
 		details,
 		selectedBranch,
-	) { m, b ->
-		(m?.chapters ?: return@combine emptyList())
-			.map { x -> MangaBranch(x.key, x.value.size, x.key == b) }
-			.sortedWith(BranchComparator())
+		history,
+	) { m, b, h ->
+		val c = m?.chapters
+		if (c.isNullOrEmpty()) {
+			return@combine emptyList()
+		}
+		val currentBranch = h?.let { m.allChapters.findById(it.chapterId) }?.branch
+		c.map { x ->
+			MangaBranch(
+				name = x.key,
+				count = x.value.size,
+				isSelected = x.key == b,
+				isCurrent = h != null && x.key == currentBranch,
+			)
+		}.sortedWith(BranchComparator())
 	}.stateIn(viewModelScope + Dispatchers.Default, SharingStarted.Eagerly, emptyList())
 
 	val isChaptersEmpty: StateFlow<Boolean> = details.map {
@@ -199,6 +213,14 @@ class DetailsViewModel @Inject constructor(
 	) { list, reversed, query ->
 		(if (reversed) list.asReversed() else list).filterSearch(query)
 	}.stateIn(viewModelScope, SharingStarted.Eagerly, emptyList())
+
+	val readingTime = combine(
+		details,
+		selectedBranch,
+		history,
+	) { m, b, h ->
+		readingTimeUseCase.invoke(m, b, h)
+	}.stateIn(viewModelScope, SharingStarted.Lazily, null)
 
 	val selectedBranchValue: String?
 		get() = selectedBranch.value
@@ -322,6 +344,13 @@ class DetailsViewModel @Inject constructor(
 
 	fun onButtonTipClosed() {
 		settings.closeTip(DetailsActivity.TIP_BUTTON)
+	}
+
+	fun removeFromHistory() {
+		launchJob(Dispatchers.Default) {
+			val handle = historyRepository.delete(setOf(mangaId))
+			onActionDone.call(ReversibleAction(R.string.removed_from_history, handle))
+		}
 	}
 
 	private fun doLoad() = launchLoadingJob(Dispatchers.Default) {

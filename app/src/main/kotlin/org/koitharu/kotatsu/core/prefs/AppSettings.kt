@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatDelegate
 import androidx.collection.ArraySet
 import androidx.core.content.edit
 import androidx.core.os.LocaleListCompat
+import androidx.documentfile.provider.DocumentFile
 import androidx.preference.PreferenceManager
 import dagger.hilt.android.qualifiers.ApplicationContext
 import org.json.JSONArray
@@ -70,6 +71,9 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 			}
 		}
 
+	val isNavLabelsVisible: Boolean
+		get() = prefs.getBoolean(KEY_NAV_LABELS, true)
+
 	var gridSize: Int
 		get() = prefs.getInt(KEY_GRID_SIZE, 100)
 		set(value) = prefs.edit { putInt(KEY_GRID_SIZE, value) }
@@ -101,14 +105,21 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 			}
 		}
 
-	val readerPageSwitch: Set<String>
-		get() = prefs.getStringSet(KEY_READER_SWITCHERS, null) ?: setOf(PAGE_SWITCH_TAPS)
+	var isReaderDoubleOnLandscape: Boolean
+		get() = prefs.getBoolean(KEY_READER_DOUBLE_PAGES, false)
+		set(value) = prefs.edit { putBoolean(KEY_READER_DOUBLE_PAGES, value) }
+
+	val isReaderVolumeButtonsEnabled: Boolean
+		get() = prefs.getBoolean(KEY_READER_VOLUME_BUTTONS, false)
 
 	val isReaderZoomButtonsEnabled: Boolean
 		get() = prefs.getBoolean(KEY_READER_ZOOM_BUTTONS, false)
 
-	val isReaderTapsAdaptive: Boolean
-		get() = !prefs.getBoolean(KEY_READER_TAPS_LTR, false)
+	val isReaderControlAlwaysLTR: Boolean
+		get() = prefs.getBoolean(KEY_READER_CONTROL_LTR, false)
+
+	val isReaderFullscreenEnabled: Boolean
+		get() = prefs.getBoolean(KEY_READER_FULLSCREEN, true)
 
 	val isReaderOptimizationEnabled: Boolean
 		get() = prefs.getBoolean(KEY_READER_OPTIMIZE, false)
@@ -347,14 +358,22 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		set(value) = prefs.edit { putEnumValue(KEY_LOCAL_LIST_ORDER, value) }
 
 	var historySortOrder: ListSortOrder
-		get() = prefs.getEnumValue(KEY_HISTORY_ORDER, ListSortOrder.UPDATED)
+		get() = prefs.getEnumValue(KEY_HISTORY_ORDER, ListSortOrder.LAST_READ)
 		set(value) = prefs.edit { putEnumValue(KEY_HISTORY_ORDER, value) }
+
+	var allFavoritesSortOrder: ListSortOrder
+		get() = prefs.getEnumValue(KEY_FAVORITES_ORDER, ListSortOrder.NEWEST)
+		set(value) = prefs.edit { putEnumValue(KEY_FAVORITES_ORDER, value) }
 
 	val isRelatedMangaEnabled: Boolean
 		get() = prefs.getBoolean(KEY_RELATED_MANGA, true)
 
 	val isWebtoonZoomEnable: Boolean
 		get() = prefs.getBoolean(KEY_WEBTOON_ZOOM, true)
+
+	@get:FloatRange(from = 0.0, to = 0.5)
+	val defaultWebtoonZoomOut: Float
+		get() = prefs.getInt(KEY_WEBTOON_ZOOM_OUT, 0).coerceIn(0, 50) / 100f
 
 	@get:FloatRange(from = 0.0, to = 1.0)
 	var readerAutoscrollSpeed: Float
@@ -391,6 +410,12 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		get() = prefs.getString(KEY_BACKUP_PERIODICAL_OUTPUT, null)?.toUriOrNull()
 		set(value) = prefs.edit { putString(KEY_BACKUP_PERIODICAL_OUTPUT, value?.toString()) }
 
+	val isReadingTimeEstimationEnabled: Boolean
+		get() = prefs.getBoolean(KEY_READING_TIME, true)
+
+	val isPagesSavingAskEnabled: Boolean
+		get() = prefs.getBoolean(KEY_PAGES_SAVE_ASK, true)
+
 	fun isTipEnabled(tip: String): Boolean {
 		return prefs.getStringSet(KEY_TIPS_CLOSED, emptySet())?.contains(tip) != true
 	}
@@ -401,6 +426,15 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 			return
 		}
 		prefs.edit { putStringSet(KEY_TIPS_CLOSED, closedTips + tip) }
+	}
+
+	fun getPagesSaveDir(context: Context): DocumentFile? =
+		prefs.getString(KEY_PAGES_SAVE_DIR, null)?.toUriOrNull()?.let {
+			DocumentFile.fromTreeUri(context, it)
+		}
+
+	fun setPagesSaveDir(uri: Uri?) {
+		prefs.edit { putString(KEY_PAGES_SAVE_DIR, uri?.toString()) }
 	}
 
 	fun subscribe(listener: SharedPreferences.OnSharedPreferenceChangeListener) {
@@ -449,7 +483,6 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 
 	companion object {
 
-		const val PAGE_SWITCH_TAPS = "taps"
 		const val PAGE_SWITCH_VOLUME_KEYS = "volume"
 
 		const val TRACK_HISTORY = "history"
@@ -472,8 +505,11 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_GRID_SIZE = "grid_size"
 		const val KEY_REMOTE_SOURCES = "remote_sources"
 		const val KEY_LOCAL_STORAGE = "local_storage"
-		const val KEY_READER_SWITCHERS = "reader_switchers"
+		const val KEY_READER_DOUBLE_PAGES = "reader_double_pages"
 		const val KEY_READER_ZOOM_BUTTONS = "reader_zoom_buttons"
+		const val KEY_READER_CONTROL_LTR = "reader_taps_ltr"
+		const val KEY_READER_FULLSCREEN = "reader_fullscreen"
+		const val KEY_READER_VOLUME_BUTTONS = "reader_volume_buttons"
 		const val KEY_TRACKER_ENABLED = "tracker_enabled"
 		const val KEY_TRACKER_WIFI_ONLY = "tracker_wifi"
 		const val KEY_TRACK_SOURCES = "track_sources"
@@ -514,6 +550,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_SHIKIMORI = "shikimori"
 		const val KEY_ANILIST = "anilist"
 		const val KEY_MAL = "mal"
+		const val KEY_KITSU = "kitsu"
 		const val KEY_DOWNLOADS_WIFI = "downloads_wifi"
 		const val KEY_ALL_FAVOURITES_VISIBLE = "all_favourites_visible"
 		const val KEY_DOH = "doh"
@@ -526,11 +563,13 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_READER_BACKGROUND = "reader_background"
 		const val KEY_READER_SCREEN_ON = "reader_screen_on"
 		const val KEY_SHORTCUTS = "dynamic_shortcuts"
-		const val KEY_READER_TAPS_LTR = "reader_taps_ltr"
+		const val KEY_READER_TAP_ACTIONS = "reader_tap_actions"
 		const val KEY_READER_OPTIMIZE = "reader_optimize"
 		const val KEY_LOCAL_LIST_ORDER = "local_order"
 		const val KEY_HISTORY_ORDER = "history_order"
+		const val KEY_FAVORITES_ORDER = "fav_order"
 		const val KEY_WEBTOON_ZOOM = "webtoon_zoom"
+		const val KEY_WEBTOON_ZOOM_OUT = "webtoon_zoom_out"
 		const val KEY_PREFETCH_CONTENT = "prefetch_content"
 		const val KEY_APP_LOCALE = "app_locale"
 		const val KEY_LOGGING_ENABLED = "logging"
@@ -554,6 +593,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_DISABLE_NSFW = "no_nsfw"
 		const val KEY_RELATED_MANGA = "related_manga"
 		const val KEY_NAV_MAIN = "nav_main"
+		const val KEY_NAV_LABELS = "nav_labels"
 		const val KEY_32BIT_COLOR = "enhanced_colors"
 		const val KEY_SOURCES_ORDER = "sources_sort_order"
 		const val KEY_SOURCES_CATALOG = "sources_catalog"
@@ -563,6 +603,9 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_CF_GRAYSCALE = "cf_grayscale"
 		const val KEY_IGNORE_DOZE = "ignore_dose"
 		const val KEY_DETAILS_TAB = "details_tab"
+		const val KEY_READING_TIME = "reading_time"
+		const val KEY_PAGES_SAVE_DIR = "pages_dir"
+		const val KEY_PAGES_SAVE_ASK = "pages_dir_ask"
 
 		// About
 		const val KEY_APP_UPDATE = "app_update"

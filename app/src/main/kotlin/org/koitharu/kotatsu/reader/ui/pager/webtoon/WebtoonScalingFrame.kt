@@ -3,6 +3,7 @@ package org.koitharu.kotatsu.reader.ui.pager.webtoon
 import android.animation.ValueAnimator
 import android.content.Context
 import android.graphics.Matrix
+import android.graphics.Point
 import android.graphics.Rect
 import android.graphics.RectF
 import android.util.AttributeSet
@@ -16,13 +17,18 @@ import android.view.animation.AccelerateDecelerateInterpolator
 import android.view.animation.DecelerateInterpolator
 import android.widget.FrameLayout
 import android.widget.OverScroller
+import androidx.core.animation.doOnEnd
 import androidx.core.view.GestureDetectorCompat
 import androidx.core.view.ViewConfigurationCompat
+import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.core.ui.widgets.ZoomControl
 import org.koitharu.kotatsu.core.util.ext.getAnimationDuration
+import kotlin.math.roundToInt
 
 private const val MAX_SCALE = 2.5f
 private const val MIN_SCALE = 0.5f
+
+private const val FLING_RANGE = 20_000
 
 class WebtoonScalingFrame @JvmOverloads constructor(
 	context: Context,
@@ -32,11 +38,10 @@ class WebtoonScalingFrame @JvmOverloads constructor(
 	ScaleGestureDetector.OnScaleGestureListener,
 	ZoomControl.ZoomControlListener {
 
-	private val targetChild by lazy(LazyThreadSafetyMode.NONE) { getChildAt(0) as WebtoonRecyclerView }
-
 	private val scaleDetector = ScaleGestureDetector(context, this)
 	private val gestureDetector = GestureDetectorCompat(context, GestureListener())
 	private val overScroller = OverScroller(context, AccelerateDecelerateInterpolator())
+
 	private val transformMatrix = Matrix()
 	private val matrixValues = FloatArray(9)
 	private val scale
@@ -50,12 +55,22 @@ class WebtoonScalingFrame @JvmOverloads constructor(
 	private val translateBounds = RectF()
 	private val targetHitRect = Rect()
 	private var animator: ValueAnimator? = null
+	private var pendingScroll = 0
 
 	var isZoomEnable = false
 		set(value) {
 			field = value
 			if (scale != 1f) {
 				scaleChild(1f, halfWidth, halfHeight)
+			}
+		}
+
+	var zoom: Float
+		get() = scale
+		set(value) {
+			if (value != scale) {
+				scaleChild(value, halfWidth, halfHeight)
+				onPostScale(invalidateLayout = true)
 			}
 		}
 
@@ -72,7 +87,7 @@ class WebtoonScalingFrame @JvmOverloads constructor(
 			overScroller.forceFinished(true)
 		}
 
-		gestureDetector.onTouchEvent(ev)
+		val consumed = gestureDetector.onTouchEvent(ev)
 		scaleDetector.onTouchEvent(ev)
 
 		// Offset event to inside the child view
@@ -80,11 +95,7 @@ class WebtoonScalingFrame @JvmOverloads constructor(
 			ev.offsetLocation(halfWidth - ev.x + targetHitRect.width() / 3, 0f)
 		}
 
-		// Send action cancel to avoid recycler jump when scale end
-		if (scaleDetector.isInProgress) {
-			ev.action = MotionEvent.ACTION_CANCEL
-		}
-		return super.dispatchTouchEvent(ev)
+		return consumed || scaleDetector.isInProgress || super.dispatchTouchEvent(ev)
 	}
 
 	override fun onGenericMotionEvent(event: MotionEvent): Boolean {
@@ -163,12 +174,17 @@ class WebtoonScalingFrame @JvmOverloads constructor(
 	}
 
 	private fun invalidateTarget() {
+		val targetChild = findTargetChild()
 		adjustBounds()
 		targetChild.run {
 			scaleX = scale
 			scaleY = scale
 			translationX = transX
 			translationY = transY
+			if (pendingScroll != 0) {
+				nestedScrollBy(0, pendingScroll)
+				pendingScroll = 0
+			}
 		}
 
 		val newHeight = if (scale < 1f) (height / scale).toInt() else height
@@ -201,6 +217,7 @@ class WebtoonScalingFrame @JvmOverloads constructor(
 			else -> 0f
 		}
 
+		pendingScroll = if (scale > 1) (dy / scale).roundToInt() else 0
 		transformMatrix.postTranslate(dx, dy)
 		syncMatrixValues()
 	}
@@ -239,7 +256,19 @@ class WebtoonScalingFrame @JvmOverloads constructor(
 		return true
 	}
 
-	override fun onScaleEnd(p0: ScaleGestureDetector) = Unit
+	override fun onScaleEnd(p0: ScaleGestureDetector) {
+		onPostScale(invalidateLayout = false)
+	}
+
+	private fun onPostScale(invalidateLayout: Boolean) {
+		val target = findTargetChild()
+		target.post {
+			target.updateChildrenScroll()
+			if (invalidateLayout) {
+				target.requestLayout()
+			}
+		}
+	}
 
 	private fun smoothScaleTo(target: Float) {
 		val newScale = target.coerceIn(MIN_SCALE, MAX_SCALE)
@@ -248,11 +277,15 @@ class WebtoonScalingFrame @JvmOverloads constructor(
 			setDuration(context.getAnimationDuration(android.R.integer.config_shortAnimTime))
 			interpolator = DecelerateInterpolator()
 			addUpdateListener { scaleChild(it.animatedValue as Float, halfWidth, halfHeight) }
+			doOnEnd { onPostScale(invalidateLayout = false) }
 			start()
 		}
 	}
 
+	private fun findTargetChild() = getChildAt(0) as WebtoonRecyclerView
+
 	private inner class GestureListener : GestureDetector.SimpleOnGestureListener(), Runnable {
+		private val prevPos = Point()
 
 		override fun onScroll(
 			e1: MotionEvent?,
@@ -270,7 +303,7 @@ class WebtoonScalingFrame @JvmOverloads constructor(
 			val newScale = if (scale != 1f) 1f else MAX_SCALE * 0.8f
 			ValueAnimator.ofFloat(scale, newScale).run {
 				interpolator = AccelerateDecelerateInterpolator()
-				duration = 300
+				duration = context.getAnimationDuration(R.integer.config_defaultAnimTime)
 				addUpdateListener {
 					scaleChild(it.animatedValue as Float, e.x, e.y)
 				}
@@ -287,15 +320,16 @@ class WebtoonScalingFrame @JvmOverloads constructor(
 		): Boolean {
 			if (scale <= 1) return false
 
+			prevPos.set(transX.toInt(), transY.toInt())
 			overScroller.fling(
-				transX.toInt(),
-				transY.toInt(),
+				prevPos.x,
+				prevPos.y,
 				velocityX.toInt(),
 				velocityY.toInt(),
 				translateBounds.left.toInt(),
 				translateBounds.right.toInt(),
-				translateBounds.top.toInt(),
-				translateBounds.bottom.toInt(),
+				translateBounds.top.toInt() - FLING_RANGE,
+				translateBounds.bottom.toInt() + FLING_RANGE,
 			)
 			postOnAnimation(this)
 			return true
@@ -304,9 +338,10 @@ class WebtoonScalingFrame @JvmOverloads constructor(
 		override fun run() {
 			if (overScroller.computeScrollOffset()) {
 				transformMatrix.postTranslate(
-					overScroller.currX - transX,
-					overScroller.currY - transY,
+					overScroller.currX.toFloat() - prevPos.x,
+					overScroller.currY.toFloat() - prevPos.y
 				)
+				prevPos.set(overScroller.currX, overScroller.currY)
 				invalidateTarget()
 				postOnAnimation(this)
 			}

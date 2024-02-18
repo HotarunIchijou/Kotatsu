@@ -67,7 +67,7 @@
     <string name="grid_size">Tamaño de la cuadrícula</string>
     <string name="search_on_s">Buscar en %s</string>
     <string name="delete_manga">Borrar manga</string>
-    <string name="text_delete_local_manga">¿Borrar \"%s\" del dispositivo permanentemente\?</string>
+    <string name="text_delete_local_manga">¿Borrar permanentemente \"%s\" del dispositivo?</string>
     <string name="reader_settings">Ajustes del lector</string>
     <string name="switch_pages">Cambiar de página</string>
     <string name="taps_on_edges">Toques de borde</string>
@@ -98,7 +98,7 @@
     <string name="manga_shelf">Estante</string>
     <string name="recent_manga">Reciente</string>
     <string name="pages_animation">Animación de página</string>
-    <string name="manga_save_location">Carpeta para descargas</string>
+    <string name="manga_save_location">Carpeta de descargas</string>
     <string name="not_available">No disponible</string>
     <string name="cannot_find_available_storage">No hay almacenamiento disponible</string>
     <string name="other_storage">Otro almacenamiento</string>
@@ -107,7 +107,7 @@
     <string name="favourites_category_empty">Categoría vacía</string>
     <string name="read_later">Leer más tarde</string>
     <string name="updates">Actualizaciones</string>
-    <string name="text_feed_holder">Aquí verás los nuevos episodios del manga que estás leyendo</string>
+    <string name="text_feed_holder">Aquí se muestran los nuevos capítulos de lo que está leyendo</string>
     <string name="search_results">Resultados de la búsqueda</string>
     <string name="new_version_s">Nueva versión: %s</string>
     <string name="size_s">Tamaño: %s</string>
@@ -169,7 +169,7 @@
     <string name="protect_application_subtitle">Introduce la contraseña que se requerirá cuando se inicie la aplicación</string>
     <string name="confirm">Confirmar</string>
     <string name="password_length_hint">La contraseña debe tener al menos 4 caracteres</string>
-    <string name="text_local_holder_secondary">Puedes guardarlo desde fuentes in línea o importarlo desde un archivo.</string>
+    <string name="text_local_holder_secondary">Guarda algo de un catálogo en línea o impórtalo desde un archivo.</string>
     <string name="text_local_holder_primary">Todavía no tienes ningún manga guardado</string>
     <string name="text_history_holder_secondary">Encuentra qué leer en la sección «Explorar»</string>
     <string name="text_history_holder_primary">Lo que leas se mostrará aquí</string>
@@ -229,7 +229,7 @@
     <string name="text_delete_local_manga_batch">¿Eliminar elementos seleccionados del dispositivo de forma permanente\?</string>
     <string name="hide">Ocultar</string>
     <string name="download_slowdown">Ralentización de la descarga</string>
-    <string name="new_sources_text">Nuevas fuentes de manga son disponibles</string>
+    <string name="new_sources_text">Hay nuevas fuentes de manga disponibles</string>
     <string name="download_slowdown_summary">Ayuda a evitar el bloqueo de tu dirección IP</string>
     <string name="local_manga_processing">Procesamiento de manga guardado</string>
     <string name="check_new_chapters_title">Comprueba si hay nuevos capítulos y notifica sobre ellos</string>
@@ -551,4 +551,41 @@
     <string name="rating_adult">Adulto</string>
     <string name="content_rating">Clasificación del contenido</string>
     <string name="default_tab">Pestaña por defecto</string>
+    <string name="mark_as_completed">Marcar como completado</string>
+    <string name="mark_as_completed_prompt">¿Marcar el manga seleccionado como completamente leído?
+\n
+\nAdvertencia: el progreso de lectura actual se perderá.</string>
+    <string name="category_hidden_done">Esta categoría estaba oculta en la pantalla principal y es accesible a través de Menú → Gestionar categorías</string>
+    <string name="approximate_reading_time">Tiempo aproximado de lectura</string>
+    <string name="approximate_remaining_time">Duración restante aproximada</string>
+    <string name="remaining_time_pattern">%1$s %2$s</string>
+    <string name="volume_unknown">Volumen desconocido</string>
+    <string name="volume_">Volumen %d</string>
+    <string name="incognito_mode_hint">Tu progreso en la lectura no se guardará</string>
+    <string name="vertical">Vertical</string>
+    <string name="last_read">Último leído</string>
+    <string name="two_pages">Dos páginas</string>
+    <string name="show_menu">Mostrar menú</string>
+    <string name="toggle_ui">Mostrar/esconder interfaz</string>
+    <string name="next_chapter">Siguiente capítulo</string>
+    <string name="prev_page">Página anterior</string>
+    <string name="next_page">Página siguiente</string>
+    <string name="reader_actions">Acciones del lector</string>
+    <string name="reader_actions_summary">Configurara acciones para zonas clickeables</string>
+    <string name="switch_pages_volume_buttons">Activar botones de volumen</string>
+    <string name="tap_action">Acción de click</string>
+    <string name="long_tap_action">Acción de click largo</string>
+    <string name="prev_chapter">Capítulo anterior</string>
+    <string name="switch_pages_volume_buttons_summary">Utilizar botones de volumen para cambiar de página</string>
+    <string name="email_password_enter_hint">Introduzca su correo electrónico y contraseña para continuar</string>
+    <string name="use_two_pages_landscape">Utilizar un diseño de dos páginas en orientación horizontal (beta)</string>
+    <string name="none">Ninguno</string>
+    <string name="config_reset_confirm">¿Restablecer los valores por defecto? Esta acción no se puede deshacer.</string>
+    <string name="default_webtoon_zoom_out">Alejar el zoom del webtoon predeterminado</string>
+    <string name="fullscreen_mode">Modo de pantalla completa</string>
+    <string name="reader_fullscreen_summary">Ocultar las barras de estado y navegación del sistema</string>
+    <string name="reading_time_estimation">Mostrar el iempo estimado de lectura</string>
+    <string name="reading_time_estimation_summary">El valor estimado puede ser inexacto</string>
+    <string name="check_for_new_chapters_disabled">La búsqueda de nuevos capítulos está desactivada</string>
+    <string name="suggestions_unavailable_text">Sugerencias desactivadas</string>
 </resources>

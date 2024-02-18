@@ -7,10 +7,12 @@ import androidx.activity.OnBackPressedCallback
 import androidx.annotation.IdRes
 import androidx.core.view.isEmpty
 import androidx.core.view.iterator
+import androidx.core.view.size
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.FragmentManager
 import androidx.lifecycle.LifecycleOwner
 import androidx.lifecycle.lifecycleScope
+import com.google.android.material.bottomnavigation.BottomNavigationView
 import com.google.android.material.navigation.NavigationBarView
 import com.google.android.material.transition.MaterialFadeThrough
 import kotlinx.coroutines.Dispatchers
@@ -33,6 +35,7 @@ import org.koitharu.kotatsu.local.ui.LocalListFragment
 import org.koitharu.kotatsu.suggestions.ui.SuggestionsFragment
 import org.koitharu.kotatsu.tracker.ui.feed.FeedFragment
 import java.util.LinkedList
+import com.google.android.material.R as materialR
 
 private const val TAG_PRIMARY = "primary"
 
@@ -134,13 +137,13 @@ class MainNavigationDelegate(
 	private fun onNavigationItemSelected(@IdRes itemId: Int): Boolean {
 		return setPrimaryFragment(
 			when (itemId) {
-				R.id.nav_history -> HistoryListFragment()
-				R.id.nav_favorites -> FavouritesContainerFragment()
-				R.id.nav_explore -> ExploreFragment()
-				R.id.nav_feed -> FeedFragment()
-				R.id.nav_local -> LocalListFragment.newInstance()
-				R.id.nav_suggestions -> SuggestionsFragment()
-				R.id.nav_bookmarks -> BookmarksFragment()
+				R.id.nav_history -> HistoryListFragment::class.java
+				R.id.nav_favorites -> FavouritesContainerFragment::class.java
+				R.id.nav_explore -> ExploreFragment::class.java
+				R.id.nav_feed -> FeedFragment::class.java
+				R.id.nav_local -> LocalListFragment::class.java
+				R.id.nav_suggestions -> SuggestionsFragment::class.java
+				R.id.nav_bookmarks -> BookmarksFragment::class.java
 				else -> return false
 			},
 		)
@@ -157,16 +160,17 @@ class MainNavigationDelegate(
 		else -> 0
 	}
 
-	private fun setPrimaryFragment(fragment: Fragment): Boolean {
-		if (fragmentManager.isStateSaved) {
+	private fun setPrimaryFragment(fragmentClass: Class<out Fragment>): Boolean {
+		if (fragmentManager.isStateSaved || fragmentClass.isInstance(primaryFragment)) {
 			return false
 		}
+		val fragment = instantiateFragment(fragmentClass)
 		fragment.enterTransition = MaterialFadeThrough()
 		fragmentManager.beginTransaction()
 			.setReorderingAllowed(true)
-			.replace(R.id.container, fragment, TAG_PRIMARY)
+			.replace(R.id.container, fragmentClass, null, TAG_PRIMARY)
+			.runOnCommit { onFragmentChanged(fragment, fromUser = true) }
 			.commit()
-		onFragmentChanged(fragment, fromUser = true)
 		return true
 	}
 
@@ -179,17 +183,28 @@ class MainNavigationDelegate(
 		for (item in items) {
 			menu.add(Menu.NONE, item.id, Menu.NONE, item.title)
 				.setIcon(item.icon)
+			if (menu.size >= navBar.maxItemCount) {
+				break
+			}
 		}
+	}
+
+	private fun instantiateFragment(fragmentClass: Class<out Fragment>): Fragment {
+		val classLoader = navBar.context.classLoader
+		return fragmentManager.fragmentFactory.instantiate(classLoader, fragmentClass.name)
 	}
 
 	private fun observeSettings(lifecycleOwner: LifecycleOwner) {
 		settings.observe()
-			.filter { x -> x == AppSettings.KEY_TRACKER_ENABLED || x == AppSettings.KEY_SUGGESTIONS }
+			.filter { x ->
+				x == AppSettings.KEY_TRACKER_ENABLED || x == AppSettings.KEY_SUGGESTIONS || x == AppSettings.KEY_NAV_LABELS
+			}
 			.onStart { emit("") }
-			.flowOn(Dispatchers.Default)
+			.flowOn(Dispatchers.IO)
 			.onEach {
 				setItemVisibility(R.id.nav_suggestions, settings.isSuggestionsEnabled)
 				setItemVisibility(R.id.nav_feed, settings.isTrackerEnabled)
+				setNavbarIsLabeled(settings.isNavLabelsVisible)
 			}.launchIn(lifecycleOwner.lifecycleScope)
 	}
 
@@ -199,6 +214,23 @@ class MainNavigationDelegate(
 			if (item.isVisible) return item
 		}
 		return null
+	}
+
+	private fun setNavbarIsLabeled(value: Boolean) {
+		if (navBar is BottomNavigationView) {
+			navBar.minimumHeight = navBar.resources.getDimensionPixelSize(
+				if (value) {
+					materialR.dimen.m3_bottom_nav_min_height
+				} else {
+					R.dimen.nav_bar_height_compact
+				},
+			)
+		}
+		navBar.labelVisibilityMode = if (value) {
+			NavigationBarView.LABEL_VISIBILITY_LABELED
+		} else {
+			NavigationBarView.LABEL_VISIBILITY_UNLABELED
+		}
 	}
 
 	interface OnFragmentChangedListener {

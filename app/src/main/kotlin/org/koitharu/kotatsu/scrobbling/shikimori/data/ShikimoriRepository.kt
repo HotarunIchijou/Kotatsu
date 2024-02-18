@@ -10,7 +10,6 @@ import org.json.JSONObject
 import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.core.db.MangaDatabase
 import org.koitharu.kotatsu.core.util.ext.toRequestBody
-import org.koitharu.kotatsu.parsers.model.MangaChapter
 import org.koitharu.kotatsu.parsers.util.await
 import org.koitharu.kotatsu.parsers.util.json.getStringOrNull
 import org.koitharu.kotatsu.parsers.util.json.mapJSON
@@ -130,12 +129,12 @@ class ShikimoriRepository @Inject constructor(
 		saveRate(response, mangaId)
 	}
 
-	override suspend fun updateRate(rateId: Int, mangaId: Long, chapter: MangaChapter) {
+	override suspend fun updateRate(rateId: Int, mangaId: Long, chapter: Int) {
 		val payload = JSONObject()
 		payload.put(
 			"user_rate",
 			JSONObject().apply {
-				put("chapters", chapter.number)
+				put("chapters", chapter)
 			},
 		)
 		val url = BASE_URL.toHttpUrl().newBuilder()
@@ -216,7 +215,7 @@ class ShikimoriRepository @Inject constructor(
 	private fun ShikimoriUser(json: JSONObject) = ScrobblerUser(
 		id = json.getLong("id"),
 		nickname = json.getString("nickname"),
-		avatar = json.getString("avatar"),
+		avatar = json.getStringOrNull("avatar"),
 		service = ScrobblerService.SHIKIMORI,
 	)
 }

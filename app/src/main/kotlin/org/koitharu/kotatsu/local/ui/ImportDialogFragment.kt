@@ -9,12 +9,19 @@ import android.widget.Toast
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.fragment.app.FragmentManager
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
+import dagger.hilt.android.AndroidEntryPoint
 import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.core.ui.AlertDialogFragment
 import org.koitharu.kotatsu.core.util.ext.tryLaunch
 import org.koitharu.kotatsu.databinding.DialogImportBinding
+import org.koitharu.kotatsu.local.data.LocalStorageManager
+import javax.inject.Inject
 
+@AndroidEntryPoint
 class ImportDialogFragment : AlertDialogFragment<DialogImportBinding>(), View.OnClickListener {
+
+	@Inject
+	lateinit var storageManager: LocalStorageManager
 
 	private val importFileCall = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) {
 		startImport(it)
@@ -54,6 +61,9 @@ class ImportDialogFragment : AlertDialogFragment<DialogImportBinding>(), View.On
 	private fun startImport(uris: Collection<Uri>) {
 		if (uris.isEmpty()) {
 			return
+		}
+		uris.forEach {
+			storageManager.takePermissions(it)
 		}
 		val ctx = requireContext()
 		ImportWorker.start(ctx, uris)

@@ -58,12 +58,12 @@
     <string name="clear_pages_cache">Очистити кеш сторінок</string>
     <string name="text_file_sizes">Б|кБ|МБ|ГБ|ТБ</string>
     <string name="standard">Стандартний</string>
-    <string name="webtoon">Вебтун</string>
+    <string name="webtoon">Манхва</string>
     <string name="read_mode">Режим читання</string>
     <string name="grid_size">Розмір сітки</string>
     <string name="search_on_s">Пошук по %s</string>
     <string name="delete_manga">Видалити манґу</string>
-    <string name="text_delete_local_manga">Видалити \"%s\" з пристрою перманентно\?</string>
+    <string name="text_delete_local_manga">Назавжди видалити \"%s\" із пристрою?</string>
     <string name="reader_settings">Налаштування читача</string>
     <string name="switch_pages">Перегортання сторінок</string>
     <string name="volume_buttons">Кнопки гучності</string>
@@ -90,11 +90,11 @@
     <string name="text_history_holder_primary">Те, що ви читаєте, буде показано тут</string>
     <string name="text_history_holder_secondary">Знайдіть, що почитати, у розділі «Огляд»</string>
     <string name="text_local_holder_primary">Спочатку збережіть щось</string>
-    <string name="text_local_holder_secondary">Збережіть його з онлайн-джерела або імпортуйте файли.</string>
+    <string name="text_local_holder_secondary">Збережіть щось із онлайн-каталогу або імпортуйте це з файлу.</string>
     <string name="manga_shelf">Полиця</string>
     <string name="recent_manga">Недавні</string>
     <string name="pages_animation">Анімація перегортання</string>
-    <string name="manga_save_location">Тека для завантажень</string>
+    <string name="manga_save_location">Папка завантажень</string>
     <string name="other_storage">Інше сховище</string>
     <string name="done">Готово</string>
     <string name="all_favourites">Усі улюблені</string>
@@ -250,7 +250,7 @@
     <string name="removed_from_history">Видалено з історії</string>
     <string name="dns_over_https">DNS через HTTPS</string>
     <string name="default_mode">Режим за умовчанням</string>
-    <string name="detect_reader_mode_summary">Автоматично визначати, чи є манґа вебтуном</string>
+    <string name="detect_reader_mode_summary">Автоматично визначати, чи є манґа манхвою</string>
     <string name="detect_reader_mode">Автовизначення режиму читання</string>
     <string name="disable_battery_optimization">Вимкнути оптимізацію акумулятора</string>
     <string name="disable_battery_optimization_summary">Допомагає з перевірками фонових оновлень</string>
@@ -327,7 +327,7 @@
     <string name="manga_error_description_pattern">Деталі помилки:&lt;br&gt;&lt;tt&gt;%1$s&lt;/tt&gt;&lt;br&gt;&lt;br&gt;1. Спробуйте &lt;a href=%2$s&gt;відкрити манґу у веб-браузері&lt;/a&gt;, щоб переконатися, що вона доступна в джерелі&lt;br&gt;2. Переконайтеся, що ви використовуєте &lt;a href=kotatsu://about&gt;останню версію Kotatsu&lt;/a&gt;&lt;br&gt;3. Якщо він доступний, надішліть звіт про помилку розробникам.</string>
     <string name="history_shortcuts">Показувати ярлики останньої прочитаної манґи</string>
     <string name="history_shortcuts_summary">Зробити нещодавно прочитану манґу доступною за довгим натисканням на іконку застосунку</string>
-    <string name="reader_control_ltr_summary">Натискання на правий край або натискання правої клавіші завжди переходить на наступну сторінку</string>
+    <string name="reader_control_ltr_summary">Навігація «Далі» завжди веде до наступної сторінки під час використання миші та клавіатури.</string>
     <string name="reader_control_ltr">Ергономічне керування режимом читання</string>
     <string name="brightness">Яскравість</string>
     <string name="color_correction">Корекція кольору</string>
@@ -342,7 +342,7 @@
     <string name="different_languages">Різні мови</string>
     <string name="network_unavailable">Мережа недоступна</string>
     <string name="network_unavailable_hint">Увімкніть Wi-Fi або мобільну мережу, щоб читати манґу онлайн</string>
-    <string name="webtoon_zoom">Масштабування в режимі вебтуну</string>
+    <string name="webtoon_zoom">Масштабування в режимі манхви</string>
     <string name="reader_slider">Відображати повзунок перемикання сторінок</string>
     <string name="compact">Компактно</string>
     <string name="prefetch_content">Передвчасне завантаження контенту</string>
@@ -430,7 +430,7 @@
     <string name="show_pages_numbers_summary">Показати номери сторінок у нижньому куті</string>
     <string name="pages_animation_summary">Анімація перегортання сторінок</string>
     <string name="details_button_tip">Натисніть і утримуйте кнопку «Читати», щоб переглянути додаткові параметри</string>
-    <string name="webtoon_zoom_summary">Дозволити жест збільшення в режимі webtoon</string>
+    <string name="webtoon_zoom_summary">Дозволити жести масштабування в режимі манхви</string>
     <string name="clear_source_cookies_summary">Очистити файли cookie лише для вказаного домену. У більшості випадків авторизація анулюється</string>
     <string name="pick_custom_directory">Вибрати користувальницький каталог</string>
     <string name="no_access_to_file">Ви не маєте доступу до цього файлу чи каталогу</string>
@@ -551,4 +551,41 @@
     <string name="default_tab">Типова вкладка</string>
     <string name="content_rating">Рейтинг контенту</string>
     <string name="rating_suggestive">З натяками</string>
+    <string name="mark_as_completed">Позначити як завершене</string>
+    <string name="mark_as_completed_prompt">Позначити вибрану мангу як повністю прочитану?
+\n
+\nПопередження: поточний прогрес читання буде втрачено.</string>
+    <string name="approximate_reading_time">Орієнтовний час читання</string>
+    <string name="category_hidden_done">Ця категорія була прихована на головному екрані і доступна через Меню → Керування категоріями</string>
+    <string name="approximate_remaining_time">Орієнтовний час, що залишився</string>
+    <string name="remaining_time_pattern">%1$s %2$s</string>
+    <string name="incognito_mode_hint">Ваш прогрес читання не буде збережений</string>
+    <string name="volume_">Гучність %d</string>
+    <string name="volume_unknown">Невідома гучність</string>
+    <string name="vertical">Вертикальний</string>
+    <string name="last_read">Останнє прочитане</string>
+    <string name="two_pages">Дві сторінки</string>
+    <string name="show_menu">Показати меню</string>
+    <string name="toggle_ui">Показати/приховати інтерфейс</string>
+    <string name="prev_chapter">Попередня глава</string>
+    <string name="next_chapter">Наступна глава</string>
+    <string name="prev_page">Попередня сторінка</string>
+    <string name="next_page">Наступна сторінка</string>
+    <string name="none">Нічого</string>
+    <string name="reader_actions">Дії в режимі читання</string>
+    <string name="switch_pages_volume_buttons_summary">Використовуйте кнопки гучності для перегортання сторінок</string>
+    <string name="tap_action">Дія при натисканні</string>
+    <string name="long_tap_action">Дія при тривалому натисканні</string>
+    <string name="switch_pages_volume_buttons">Увімкнути кнопки гучності</string>
+    <string name="reader_actions_summary">Налаштування дій для сенсорних областей екрана</string>
+    <string name="email_password_enter_hint">Введіть свою адресу електронної пошти та пароль, щоб продовжити</string>
+    <string name="config_reset_confirm">Повернути налаштування до значень за замовчуванням? Цю дію неможливо скасувати.</string>
+    <string name="use_two_pages_landscape">Використовувати макет двох сторінок у альбомній орієнтації (бета)</string>
+    <string name="fullscreen_mode">Повноекранний режим</string>
+    <string name="reader_fullscreen_summary">Приховувати інтерфейс системи</string>
+    <string name="default_webtoon_zoom_out">Віддалення у режимі манхви</string>
+    <string name="reading_time_estimation">Відображати передбачуваний час читання</string>
+    <string name="reading_time_estimation_summary">Це значення може бути неточним</string>
+    <string name="check_for_new_chapters_disabled">Перевірка нових глав вимкнена</string>
+    <string name="suggestions_unavailable_text">Функція пропозицій вимкнена</string>
 </resources>

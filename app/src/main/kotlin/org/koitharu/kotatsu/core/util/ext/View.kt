@@ -1,34 +1,33 @@
 package org.koitharu.kotatsu.core.util.ext
 
-import android.app.Activity
 import android.graphics.Rect
 import android.os.Build
 import android.view.View
 import android.view.View.MeasureSpec
 import android.view.ViewGroup
-import android.view.inputmethod.InputMethodManager
 import android.widget.Checkable
 import androidx.appcompat.widget.ActionMenuView
 import androidx.appcompat.widget.Toolbar
+import androidx.core.view.SoftwareKeyboardControllerCompat
 import androidx.core.view.children
 import androidx.core.view.descendants
 import androidx.core.view.isVisible
 import androidx.recyclerview.widget.RecyclerView
 import androidx.recyclerview.widget.RecyclerView.ViewHolder
+import androidx.swiperefreshlayout.widget.CircularProgressDrawable
 import androidx.viewpager2.widget.ViewPager2
+import com.google.android.material.button.MaterialButton
 import com.google.android.material.progressindicator.BaseProgressIndicator
 import com.google.android.material.slider.Slider
 import com.google.android.material.tabs.TabLayout
 import kotlin.math.roundToInt
 
 fun View.hideKeyboard() {
-	val imm = context.getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
-	imm.hideSoftInputFromWindow(this.windowToken, 0)
+	SoftwareKeyboardControllerCompat(this).hide()
 }
 
 fun View.showKeyboard() {
-	val imm = context.getSystemService(Activity.INPUT_METHOD_SERVICE) as InputMethodManager
-	imm.showSoftInput(this, 0)
+	SoftwareKeyboardControllerCompat(this).show()
 }
 
 fun View.hasGlobalPoint(x: Int, y: Int): Boolean {
@@ -161,3 +160,12 @@ val Toolbar.menuView: ActionMenuView?
 		menu // to call ensureMenu()
 		return children.firstNotNullOfOrNull { it as? ActionMenuView }
 	}
+
+fun MaterialButton.setProgressIcon() {
+	val progressDrawable = CircularProgressDrawable(context)
+	progressDrawable.strokeWidth = resources.resolveDp(2f)
+	progressDrawable.setColorSchemeColors(currentTextColor)
+	progressDrawable.setTintList(textColors)
+	icon = progressDrawable
+	progressDrawable.start()
+}

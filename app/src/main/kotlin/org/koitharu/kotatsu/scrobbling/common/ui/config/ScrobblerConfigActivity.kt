@@ -112,6 +112,8 @@ class ScrobblerConfigActivity : BaseActivity<ActivityScrobblerConfigBinding>(),
 		}
 		viewBinding.imageViewAvatar.newImageRequest(this, user.avatar)
 			?.placeholder(R.drawable.bg_badge_empty)
+			?.fallback(R.drawable.ic_shortcut_default)
+			?.error(R.drawable.ic_shortcut_default)
 			?.enqueueWith(coil)
 	}
 
@@ -136,6 +138,7 @@ class ScrobblerConfigActivity : BaseActivity<ActivityScrobblerConfigBinding>(),
 		const val HOST_SHIKIMORI_AUTH = "shikimori-auth"
 		const val HOST_ANILIST_AUTH = "anilist-auth"
 		const val HOST_MAL_AUTH = "mal-auth"
+		const val HOST_KITSU_AUTH = "kitsu-auth"
 
 		fun newIntent(context: Context, service: ScrobblerService) =
 			Intent(context, ScrobblerConfigActivity::class.java)

@@ -10,8 +10,6 @@ import android.transition.TransitionManager
 import android.transition.TransitionSet
 import android.view.Gravity
 import android.view.KeyEvent
-import android.view.Menu
-import android.view.MenuItem
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup.MarginLayoutParams
@@ -40,8 +38,8 @@ import org.koitharu.kotatsu.core.parser.MangaIntent
 import org.koitharu.kotatsu.core.prefs.AppSettings
 import org.koitharu.kotatsu.core.prefs.ReaderMode
 import org.koitharu.kotatsu.core.ui.BaseFullscreenActivity
+import org.koitharu.kotatsu.core.ui.util.MenuInvalidator
 import org.koitharu.kotatsu.core.ui.widgets.ZoomControl
-import org.koitharu.kotatsu.core.util.GridTouchHelper
 import org.koitharu.kotatsu.core.util.IdlingDetector
 import org.koitharu.kotatsu.core.util.ShareHelper
 import org.koitharu.kotatsu.core.util.ext.hasGlobalPoint
@@ -56,12 +54,13 @@ import org.koitharu.kotatsu.databinding.ActivityReaderBinding
 import org.koitharu.kotatsu.details.ui.DetailsActivity
 import org.koitharu.kotatsu.parsers.model.Manga
 import org.koitharu.kotatsu.parsers.model.MangaChapter
+import org.koitharu.kotatsu.reader.data.TapGridSettings
+import org.koitharu.kotatsu.reader.domain.TapGridArea
 import org.koitharu.kotatsu.reader.ui.config.ReaderConfigSheet
 import org.koitharu.kotatsu.reader.ui.pager.ReaderPage
 import org.koitharu.kotatsu.reader.ui.pager.ReaderUiState
+import org.koitharu.kotatsu.reader.ui.tapgrid.TapGridDispatcher
 import org.koitharu.kotatsu.reader.ui.thumbnails.OnPageSelectListener
-import org.koitharu.kotatsu.reader.ui.thumbnails.PagesThumbnailsSheet
-import org.koitharu.kotatsu.settings.SettingsActivity
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
@@ -69,7 +68,7 @@ import javax.inject.Inject
 class ReaderActivity :
 	BaseFullscreenActivity<ActivityReaderBinding>(),
 	ChaptersSheet.OnChapterChangeListener,
-	GridTouchHelper.OnGridTouchListener,
+	TapGridDispatcher.OnGridTouchListener,
 	OnPageSelectListener,
 	ReaderConfigSheet.Callback,
 	ReaderControlDelegate.OnInteractionListener,
@@ -79,6 +78,9 @@ class ReaderActivity :
 
 	@Inject
 	lateinit var settings: AppSettings
+
+	@Inject
+	lateinit var tapGridSettings: TapGridSettings
 
 	private val idlingDetector = IdlingDetector(TimeUnit.SECONDS.toMillis(10), this)
 
@@ -97,7 +99,7 @@ class ReaderActivity :
 	lateinit var scrollTimerFactory: ScrollTimer.Factory
 
 	private lateinit var scrollTimer: ScrollTimer
-	private lateinit var touchHelper: GridTouchHelper
+	private lateinit var touchHelper: TapGridDispatcher
 	private lateinit var controlDelegate: ReaderControlDelegate
 	private var gestureInsets: Insets = Insets.NONE
 	private lateinit var readerManager: ReaderManager
@@ -106,12 +108,11 @@ class ReaderActivity :
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
 		setContentView(ActivityReaderBinding.inflate(layoutInflater))
-		readerManager = ReaderManager(supportFragmentManager, R.id.container)
+		readerManager = ReaderManager(supportFragmentManager, viewBinding.container, settings)
 		supportActionBar?.setDisplayHomeAsUpEnabled(true)
-		touchHelper = GridTouchHelper(this, this)
+		touchHelper = TapGridDispatcher(this, this)
 		scrollTimer = scrollTimerFactory.create(this, this)
-		controlDelegate = ReaderControlDelegate(resources, settings, this, this)
-		viewBinding.toolbarBottom.setOnMenuItemClickListener(::onOptionsItemSelected)
+		controlDelegate = ReaderControlDelegate(resources, settings, tapGridSettings, this)
 		viewBinding.slider.setLabelFormatter(PageLabelFormatter())
 		viewBinding.zoomControl.listener = this
 		ReaderSliderListener(this, viewModel).attachToSlider(viewBinding.slider)
@@ -140,10 +141,11 @@ class ReaderActivity :
 		viewModel.content.observe(this) {
 			onLoadingStateChanged(viewModel.isLoading.value)
 		}
+		viewModel.incognitoMode.observe(this, MenuInvalidator(this))
 		viewModel.isScreenshotsBlockEnabled.observe(this, this::setWindowSecure)
 		viewModel.isKeepScreenOnEnabled.observe(this, this::setKeepScreenOn)
 		viewModel.isInfoBarEnabled.observe(this, ::onReaderBarChanged)
-		viewModel.isBookmarkAdded.observe(this, this::onBookmarkStateChanged)
+		viewModel.isBookmarkAdded.observe(this, MenuInvalidator(viewBinding.toolbarBottom))
 		viewModel.onShowToast.observeEvent(this) { msgId ->
 			Snackbar.make(viewBinding.container, msgId, Snackbar.LENGTH_SHORT)
 				.setAnchorView(viewBinding.appbarBottom)
@@ -152,6 +154,8 @@ class ReaderActivity :
 		viewModel.isZoomControlsEnabled.observe(this) {
 			viewBinding.zoomControl.isVisible = it
 		}
+		addMenuProvider(ReaderTopMenuProvider(this, viewModel))
+		viewBinding.toolbarBottom.addMenuProvider(ReaderBottomMenuProvider(this, readerManager, viewModel))
 	}
 
 	override fun getParentActivityIntent(): Intent? {
@@ -190,50 +194,6 @@ class ReaderActivity :
 		viewBinding.slider.isRtl = mode == ReaderMode.REVERSED
 	}
 
-	override fun onCreateOptionsMenu(menu: Menu): Boolean {
-		menuInflater.inflate(R.menu.opt_reader_top, menu)
-		return super.onCreateOptionsMenu(menu)
-	}
-
-	override fun onOptionsItemSelected(item: MenuItem): Boolean {
-		when (item.itemId) {
-			R.id.action_settings -> {
-				startActivity(SettingsActivity.newReaderSettingsIntent(this))
-			}
-
-			R.id.action_chapters -> {
-				ChaptersSheet.show(supportFragmentManager)
-			}
-
-			R.id.action_pages_thumbs -> {
-				val state = viewModel.getCurrentState() ?: return false
-				PagesThumbnailsSheet.show(
-					supportFragmentManager,
-					viewModel.manga?.toManga() ?: return false,
-					state.chapterId,
-					state.page,
-				)
-			}
-
-			R.id.action_bookmark -> {
-				if (viewModel.isBookmarkAdded.value) {
-					viewModel.removeBookmark()
-				} else {
-					viewModel.addBookmark()
-				}
-			}
-
-			R.id.action_options -> {
-				viewModel.saveCurrentState(readerManager.currentReader?.getCurrentState())
-				val currentMode = readerManager.currentMode ?: return false
-				ReaderConfigSheet.show(supportFragmentManager, currentMode)
-			}
-
-			else -> return super.onOptionsItemSelected(item)
-		}
-		return true
-	}
-
 	private fun onLoadingStateChanged(isLoading: Boolean) {
 		val hasPages = viewModel.content.value.pages.isNotEmpty()
 		viewBinding.layoutLoading.isVisible = isLoading && !hasPages
@@ -242,13 +202,17 @@ class ReaderActivity :
 		} else {
 			viewBinding.toastView.hide()
 		}
-		val menu = viewBinding.toolbarBottom.menu
-		menu.findItem(R.id.action_bookmark).isVisible = hasPages
-		menu.findItem(R.id.action_pages_thumbs).isVisible = hasPages
+		viewBinding.toolbarBottom.invalidateMenu()
 	}
 
-	override fun onGridTouch(area: Int) {
-		controlDelegate.onGridTouch(area, viewBinding.container)
+	override fun onGridTouch(area: TapGridArea): Boolean {
+		return isReaderResumed() && controlDelegate.onGridTouch(area)
+	}
+
+	override fun onGridLongTouch(area: TapGridArea) {
+		if (isReaderResumed()) {
+			controlDelegate.onGridLongTouch(area)
+		}
 	}
 
 	override fun onProcessTouch(rawX: Int, rawY: Int): Boolean {
@@ -274,7 +238,7 @@ class ReaderActivity :
 	}
 
 	override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
-		return controlDelegate.onKeyDown(keyCode, event) || super.onKeyDown(keyCode, event)
+		return controlDelegate.onKeyDown(keyCode) || super.onKeyDown(keyCode, event)
 	}
 
 	override fun onKeyUp(keyCode: Int, event: KeyEvent?): Boolean {
@@ -302,6 +266,10 @@ class ReaderActivity :
 	override fun onReaderModeChanged(mode: ReaderMode) {
 		viewModel.saveCurrentState(readerManager.currentReader?.getCurrentState())
 		viewModel.switchMode(mode)
+	}
+
+	override fun onDoubleModeChanged(isEnabled: Boolean) {
+		readerManager.setDoubleReaderMode(isEnabled)
 	}
 
 	private fun onPageSaved(uri: Uri?) {
@@ -344,10 +312,12 @@ class ReaderActivity :
 				}
 				TransitionManager.beginDelayedTransition(viewBinding.root, transition)
 			}
+			val isFullscreen = settings.isReaderFullscreenEnabled
 			viewBinding.appbarTop.isVisible = isUiVisible
 			viewBinding.appbarBottom?.isVisible = isUiVisible
 			viewBinding.infoBar.isGone = isUiVisible || (!viewModel.isInfoBarEnabled.value)
-			systemUiController.setSystemUiVisible(isUiVisible)
+			viewBinding.infoBar.isTimeVisible = isFullscreen
+			systemUiController.setSystemUiVisible(isUiVisible || !isFullscreen)
 		}
 	}
 
@@ -364,6 +334,9 @@ class ReaderActivity :
 			rightMargin = systemBars.right + topMargin
 			leftMargin = systemBars.left + topMargin
 		}
+		viewBinding.infoBar.updatePadding(
+			top = systemBars.top,
+		)
 		return WindowInsetsCompat.Builder(insets)
 			.setInsets(WindowInsetsCompat.Type.systemBars(), Insets.NONE)
 			.build()
@@ -373,6 +346,16 @@ class ReaderActivity :
 
 	override fun switchPageBy(delta: Int) {
 		readerManager.currentReader?.switchPageBy(delta)
+	}
+
+	override fun switchChapterBy(delta: Int) {
+		viewModel.switchChapterBy(delta)
+	}
+
+	override fun openMenu() {
+		viewModel.saveCurrentState(readerManager.currentReader?.getCurrentState())
+		val currentMode = readerManager.currentMode ?: return
+		ReaderConfigSheet.show(supportFragmentManager, currentMode)
 	}
 
 	override fun scrollBy(delta: Int, smooth: Boolean): Boolean {
@@ -390,12 +373,6 @@ class ReaderActivity :
 
 	private fun onReaderBarChanged(isBarEnabled: Boolean) {
 		viewBinding.infoBar.isVisible = isBarEnabled && viewBinding.appbarTop.isGone
-	}
-
-	private fun onBookmarkStateChanged(isAdded: Boolean) {
-		val menuItem = viewBinding.toolbarBottom.menu.findItem(R.id.action_bookmark) ?: return
-		menuItem.setTitle(if (isAdded) R.string.bookmark_remove else R.string.bookmark_add)
-		menuItem.setIcon(if (isAdded) R.drawable.ic_bookmark_added else R.drawable.ic_bookmark)
 	}
 
 	private fun onUiStateChanged(pair: Pair<ReaderUiState?, ReaderUiState?>) {

@@ -35,11 +35,12 @@ abstract class HistoryDao {
 
 	fun observeAll(order: ListSortOrder): Flow<List<HistoryWithManga>> {
 		val orderBy = when (order) {
-			ListSortOrder.UPDATED -> "history.updated_at DESC"
+			ListSortOrder.LAST_READ -> "history.updated_at DESC"
 			ListSortOrder.NEWEST -> "history.created_at DESC"
 			ListSortOrder.PROGRESS -> "history.percent DESC"
 			ListSortOrder.ALPHABETIC -> "manga.title"
-			ListSortOrder.NEW_CHAPTERS -> "(SELECT chapters_new FROM tracks WHERE tracks.manga_id = manga.manga_id) DESC"
+			ListSortOrder.ALPHABETIC_REVERSE -> "manga.title DESC"
+			ListSortOrder.NEW_CHAPTERS -> "IFNULL((SELECT chapters_new FROM tracks WHERE tracks.manga_id = manga.manga_id), 0) DESC"
 			else -> throw IllegalArgumentException("Sort order $order is not supported")
 		}
 

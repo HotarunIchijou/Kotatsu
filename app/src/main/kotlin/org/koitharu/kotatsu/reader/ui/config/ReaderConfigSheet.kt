@@ -79,6 +79,9 @@ class ReaderConfigSheet :
 		binding.buttonStandard.isChecked = mode == ReaderMode.STANDARD
 		binding.buttonReversed.isChecked = mode == ReaderMode.REVERSED
 		binding.buttonWebtoon.isChecked = mode == ReaderMode.WEBTOON
+		binding.buttonVertical.isChecked = mode == ReaderMode.VERTICAL
+		binding.switchDoubleReader.isChecked = settings.isReaderDoubleOnLandscape
+		binding.switchDoubleReader.isEnabled = mode == ReaderMode.STANDARD
 
 		binding.checkableGroup.addOnButtonCheckedListener(this)
 		binding.buttonSavePage.setOnClickListener(this)
@@ -87,6 +90,7 @@ class ReaderConfigSheet :
 		binding.buttonColorFilter.setOnClickListener(this)
 		binding.sliderTimer.addOnChangeListener(this)
 		binding.switchScrollTimer.setOnCheckedChangeListener(this)
+		binding.switchDoubleReader.setOnCheckedChangeListener(this)
 
 		settings.observeAsStateFlow(
 			scope = lifecycleScope + Dispatchers.Default,
@@ -113,6 +117,7 @@ class ReaderConfigSheet :
 			R.id.button_save_page -> {
 				val page = viewModel.getCurrentPage() ?: return
 				viewModel.saveCurrentPage(page, savePageRequest)
+				dismissAllowingStateLoss()
 			}
 
 			R.id.button_screen_rotate -> {
@@ -138,6 +143,11 @@ class ReaderConfigSheet :
 			R.id.switch_screen_lock_rotation -> {
 				orientationHelper.isLocked = isChecked
 			}
+
+			R.id.switch_double_reader -> {
+				settings.isReaderDoubleOnLandscape = isChecked
+				findCallback()?.onDoubleModeChanged(isChecked)
+			}
 		}
 	}
 
@@ -153,8 +163,10 @@ class ReaderConfigSheet :
 			R.id.button_standard -> ReaderMode.STANDARD
 			R.id.button_webtoon -> ReaderMode.WEBTOON
 			R.id.button_reversed -> ReaderMode.REVERSED
+			R.id.button_vertical -> ReaderMode.VERTICAL
 			else -> return
 		}
+		viewBinding?.switchDoubleReader?.isEnabled = newMode == ReaderMode.STANDARD || newMode == ReaderMode.REVERSED
 		if (newMode == mode) {
 			return
 		}
@@ -201,6 +213,8 @@ class ReaderConfigSheet :
 		var isAutoScrollEnabled: Boolean
 
 		fun onReaderModeChanged(mode: ReaderMode)
+
+		fun onDoubleModeChanged(isEnabled: Boolean)
 	}
 
 	companion object {

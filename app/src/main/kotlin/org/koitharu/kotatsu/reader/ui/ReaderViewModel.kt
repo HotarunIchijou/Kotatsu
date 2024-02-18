@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.launchIn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.onEach
@@ -51,6 +52,7 @@ import org.koitharu.kotatsu.history.data.PROGRESS_NONE
 import org.koitharu.kotatsu.history.domain.HistoryUpdateUseCase
 import org.koitharu.kotatsu.parsers.model.Manga
 import org.koitharu.kotatsu.parsers.model.MangaPage
+import org.koitharu.kotatsu.parsers.util.assertNotNull
 import org.koitharu.kotatsu.reader.domain.ChaptersLoader
 import org.koitharu.kotatsu.reader.domain.DetectReaderModeUseCase
 import org.koitharu.kotatsu.reader.domain.PageLoader
@@ -96,6 +98,12 @@ class ReaderViewModel @Inject constructor(
 	val onShowToast = MutableEventFlow<Int>()
 	val uiState = MutableStateFlow<ReaderUiState?>(null)
 
+	val incognitoMode = if (isIncognito) {
+		MutableStateFlow(true)
+	} else mangaFlow.map {
+		it != null && historyRepository.shouldSkip(it)
+	}.stateIn(viewModelScope + Dispatchers.Default, SharingStarted.Eagerly, false)
+
 	val content = MutableStateFlow(ReaderContent(emptyList(), null))
 	val manga: MangaDetails?
 		get() = mangaData.value
@@ -120,6 +128,14 @@ class ReaderViewModel @Inject constructor(
 
 	val isWebtoonZooEnabled = observeIsWebtoonZoomEnabled()
 		.stateIn(viewModelScope + Dispatchers.Default, SharingStarted.Lazily, false)
+
+	val defaultWebtoonZoomOut = observeIsWebtoonZoomEnabled().flatMapLatest {
+		if (it) {
+			observeWebtoonZoomOut()
+		} else {
+			flowOf(0f)
+		}
+	}.flowOn(Dispatchers.Default)
 
 	val isZoomControlsEnabled = getObserveIsZoomControlEnabled().flatMapLatest { zoom ->
 		if (zoom) {
@@ -255,8 +271,26 @@ class ReaderViewModel @Inject constructor(
 		}
 	}
 
+	fun switchChapterBy(delta: Int) {
+		val prevJob = loadingJob
+		loadingJob = launchLoadingJob(Dispatchers.Default) {
+			prevJob?.cancelAndJoin()
+			val currentChapterId = currentState.requireValue().chapterId
+			val allChapters = checkNotNull(manga).allChapters
+			var index = allChapters.indexOfFirst { x -> x.id == currentChapterId }
+			if (index < 0) {
+				return@launchLoadingJob
+			}
+			index += delta
+			val newChapterId = (allChapters.getOrNull(index) ?: return@launchLoadingJob).id
+			content.value = ReaderContent(emptyList(), null)
+			chaptersLoader.loadSingleChapter(newChapterId)
+			content.value = ReaderContent(chaptersLoader.snapshot(), ReaderState(newChapterId, 0, 0))
+		}
+	}
+
 	@MainThread
-	fun onCurrentPageChanged(position: Int) {
+	fun onCurrentPageChanged(lowerPos: Int, upperPos: Int) {
 		val prevJob = stateChangeJob
 		val pages = content.value.pages // capture immediately
 		stateChangeJob = launchJob(Dispatchers.Default) {
@@ -265,7 +299,8 @@ class ReaderViewModel @Inject constructor(
 			if (pages.size != content.value.pages.size) {
 				return@launchJob // TODO
 			}
-			pages.getOrNull(position)?.let { page ->
+			val centerPos = (lowerPos + upperPos) / 2
+			pages.getOrNull(centerPos)?.let { page ->
 				currentState.update { cs ->
 					cs?.copy(chapterId = page.chapterId, page = page.index)
 				}
@@ -275,14 +310,14 @@ class ReaderViewModel @Inject constructor(
 				return@launchJob
 			}
 			ensureActive()
-			if (position >= pages.lastIndex - BOUNDS_PAGE_OFFSET) {
+			if (upperPos >= pages.lastIndex - BOUNDS_PAGE_OFFSET) {
 				loadPrevNextChapter(pages.last().chapterId, isNext = true)
 			}
-			if (position <= BOUNDS_PAGE_OFFSET) {
+			if (lowerPos <= BOUNDS_PAGE_OFFSET) {
 				loadPrevNextChapter(pages.first().chapterId, isNext = false)
 			}
 			if (pageLoader.isPrefetchApplicable()) {
-				pageLoader.prefetch(pages.trySublist(position + 1, position + PREFETCH_LIMIT))
+				pageLoader.prefetch(pages.trySublist(upperPos + 1, upperPos + PREFETCH_LIMIT))
 			}
 		}
 	}
@@ -375,18 +410,20 @@ class ReaderViewModel @Inject constructor(
 
 	@WorkerThread
 	private fun notifyStateChanged() {
-		val state = getCurrentState()
-		val chapter = state?.chapterId?.let { chaptersLoader.peekChapter(it) }
+		val state = getCurrentState().assertNotNull("state") ?: return
+		val chapter = chaptersLoader.peekChapter(state.chapterId).assertNotNull("chapter") ?: return
+		val m = manga.assertNotNull("manga") ?: return
+		val chapterIndex = m.chapters[chapter.branch]?.indexOfFirst { it.id == chapter.id } ?: -1
 		val newState = ReaderUiState(
-			mangaName = manga?.toManga()?.title,
-			branch = chapter?.branch,
-			chapterName = chapter?.name,
-			chapterNumber = chapter?.number ?: 0,
-			chaptersTotal = manga?.chapters?.get(chapter?.branch)?.size ?: 0,
-			totalPages = if (chapter != null) chaptersLoader.getPagesCount(chapter.id) else 0,
-			currentPage = state?.page ?: 0,
+			mangaName = m.toManga().title,
+			branch = chapter.branch,
+			chapterName = chapter.name,
+			chapterNumber = chapterIndex + 1,
+			chaptersTotal = m.chapters[chapter.branch]?.size ?: 0,
+			totalPages = chaptersLoader.getPagesCount(chapter.id),
+			currentPage = state.page,
 			isSliderEnabled = settings.isReaderSliderEnabled,
-			percent = if (state != null) computePercent(state.chapterId, state.page) else PROGRESS_NONE,
+			percent = computePercent(state.chapterId, state.page),
 		)
 		uiState.value = newState
 	}
@@ -408,6 +445,11 @@ class ReaderViewModel @Inject constructor(
 	private fun observeIsWebtoonZoomEnabled() = settings.observeAsFlow(
 		key = AppSettings.KEY_WEBTOON_ZOOM,
 		valueProducer = { isWebtoonZoomEnable },
+	)
+
+	private fun observeWebtoonZoomOut() = settings.observeAsFlow(
+		key = AppSettings.KEY_WEBTOON_ZOOM_OUT,
+		valueProducer = { defaultWebtoonZoomOut },
 	)
 
 	private fun getObserveIsZoomControlEnabled() = settings.observeAsFlow(

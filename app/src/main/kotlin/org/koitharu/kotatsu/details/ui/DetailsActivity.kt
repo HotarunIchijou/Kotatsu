@@ -4,7 +4,9 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.text.style.DynamicDrawableSpan
 import android.text.style.ForegroundColorSpan
+import android.text.style.ImageSpan
 import android.text.style.RelativeSizeSpan
 import android.transition.AutoTransition
 import android.transition.Slide
@@ -107,7 +109,7 @@ class DetailsActivity :
 
 		if (viewBinding.layoutBottom != null) {
 			val behavior = BottomSheetBehavior.from(checkNotNull(viewBinding.layoutBottom))
-			val bsMediator = ChaptersBottomSheetMediator(behavior, viewBinding.pager)
+			val bsMediator = ChaptersBottomSheetMediator(behavior, viewBinding.pager, viewBinding.tabs)
 			actionModeDelegate.addListener(bsMediator)
 			checkNotNull(viewBinding.layoutBsHeader).addOnLayoutChangeListener(bsMediator)
 			onBackPressedDispatcher.addCallback(bsMediator)
@@ -136,7 +138,7 @@ class DetailsActivity :
 				},
 			),
 		)
-		viewModel.onActionDone.observeEvent(this, ReversibleActionObserver(viewBinding.containerDetails))
+		viewModel.onActionDone.observeEvent(this, ReversibleActionObserver(viewBinding.containerDetails, viewBinding.layoutBottom))
 		viewModel.onShowTip.observeEvent(this) { showTip() }
 		viewModel.historyInfo.observe(this, ::onHistoryChanged)
 		viewModel.selectedBranch.observe(this) {
@@ -185,6 +187,9 @@ class DetailsActivity :
 			buttonTip = null
 			val menu = PopupMenu(v.context, v)
 			menu.inflate(R.menu.popup_read)
+			menu.menu.findItem(R.id.action_forget)?.isVisible = viewModel.historyInfo.value.run {
+				!isIncognitoMode && history != null
+			}
 			menu.setOnMenuItemClickListener(this)
 			menu.setForceShowIcon(true)
 			menu.show()
@@ -198,6 +203,11 @@ class DetailsActivity :
 		return when (item.itemId) {
 			R.id.action_incognito -> {
 				openReader(isIncognitoMode = true)
+				true
+			}
+
+			R.id.action_forget -> {
+				viewModel.removeFromHistory()
 				true
 			}
 
@@ -318,6 +328,18 @@ class DetailsActivity :
 		val branches = viewModel.branches.value
 		for ((i, branch) in branches.withIndex()) {
 			val title = buildSpannedString {
+				if (branch.isCurrent) {
+					inSpans(
+						ImageSpan(
+							this@DetailsActivity,
+							R.drawable.ic_current_chapter,
+							DynamicDrawableSpan.ALIGN_BASELINE,
+						),
+					) {
+						append(' ')
+					}
+					append(' ')
+				}
 				append(branch.name ?: getString(R.string.system_default))
 				append(' ')
 				append(' ')
@@ -363,8 +385,9 @@ class DetailsActivity :
 	}
 
 	private fun initPager() {
-		viewBinding.pager.recyclerView?.isNestedScrollingEnabled = false
 		val adapter = DetailsPagerAdapter(this)
+		viewBinding.pager.recyclerView?.isNestedScrollingEnabled = false
+		viewBinding.pager.offscreenPageLimit = 1
 		viewBinding.pager.adapter = adapter
 		TabLayoutMediator(viewBinding.tabs, viewBinding.pager, adapter).attach()
 		viewBinding.pager.setCurrentItem(settings.defaultDetailsTab, false)

@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources xmlns:tools="http://schemas.android.com/tools">
-    <string name="read">Iniciar</string>
+    <string name="read">Ler</string>
     <string name="you_have_not_favourites_yet">Ainda não há favoritos</string>
     <string name="local_storage">Armazenamento local</string>
     <string name="favourites">Favoritos</string>
@@ -28,7 +28,7 @@
     <string name="create_shortcut">Criar atalho…</string>
     <string name="share_s">Compartilhar %s</string>
     <string name="search">Procurar</string>
-    <string name="search_manga">Pesquisar mangá</string>
+    <string name="search_manga">Procurar mangá</string>
     <string name="manga_downloading_">Baixando…</string>
     <string name="processing_">Em processamento…</string>
     <string name="download_complete">Baixado</string>
@@ -63,7 +63,7 @@
     <string name="grid_size">Tamanho da grade</string>
     <string name="search_on_s">Pesquisar em %s</string>
     <string name="delete_manga">Excluir mangá</string>
-    <string name="text_delete_local_manga">Excluir “%s” do dispositivo permanentemente\?</string>
+    <string name="text_delete_local_manga">Excluir “%s” do dispositivo permanentemente?</string>
     <string name="reader_settings">Configurações do leitor</string>
     <string name="taps_on_edges">Toques de borda</string>
     <string name="volume_buttons">Botões de volume</string>
@@ -95,7 +95,7 @@
     <string name="manga_shelf">Prateleira</string>
     <string name="recent_manga">Recente</string>
     <string name="pages_animation">Animação da página</string>
-    <string name="manga_save_location">Pasta para downloads</string>
+    <string name="manga_save_location">Pasta de downloads</string>
     <string name="not_available">Não disponível</string>
     <string name="cannot_find_available_storage">Sem armazenamento disponível</string>
     <string name="other_storage">Outro armazenamento</string>
@@ -200,7 +200,7 @@
     <string name="zoom_mode_keep_start">Manter no início</string>
     <string name="black_dark_theme_summary">Consome menos bateria em telas AMOLED</string>
     <string name="create_backup">Criar backup de dados</string>
-    <string name="text_local_holder_secondary">Salve-o de fontes online ou importe arquivos.</string>
+    <string name="text_local_holder_secondary">Salvar de fontes online ou importe arquivos.</string>
     <string name="check_for_updates">Verificar se há atualizações</string>
     <string name="text_feed_holder">Novos capítulos do que você está lendo são exibidos aqui</string>
     <string name="app_version">Versão %s</string>
@@ -551,4 +551,37 @@
     <string name="rating_adult">Adulto</string>
     <string name="default_tab">Aba padrão</string>
     <string name="content_rating">Classificação do Conteúdo</string>
+    <string name="mark_as_completed_prompt">Deseja marcar o mangá selecionado como completo?
+\n
+\nAviso: o progresso de leitura atual será perdido.</string>
+    <string name="mark_as_completed">Marcar como completo</string>
+    <string name="category_hidden_done">Esta categoria foi ocultada da tela inicial e pode ser acessado através de Menu → Gerenciar categorias</string>
+    <string name="volume_">Volume %d</string>
+    <string name="volume_unknown">Volume desconhecido</string>
+    <string name="approximate_reading_time">Tempo aproximado de leitura</string>
+    <string name="incognito_mode_hint">Seu progresso de leitura não será salvo</string>
+    <string name="vertical">Vertical</string>
+    <string name="approximate_remaining_time">Tempo restante aproximado</string>
+    <string name="remaining_time_pattern">%1$s %2$s</string>
+    <string name="email_password_enter_hint">Digite seu e-mail e senha para continuar</string>
+    <string name="two_pages">Duas páginas</string>
+    <string name="show_menu">Mostrar menu</string>
+    <string name="toggle_ui">Mostrar/ocultar UI</string>
+    <string name="prev_chapter">Capítulo anterior</string>
+    <string name="next_chapter">Próximo capítulo</string>
+    <string name="prev_page">Página anterior</string>
+    <string name="next_page">Próxima página</string>
+    <string name="reader_actions">Ações do leitor</string>
+    <string name="reader_actions_summary">Configurar ações para áreas de tela ajustáveis</string>
+    <string name="switch_pages_volume_buttons">Habilitar botões de volume</string>
+    <string name="switch_pages_volume_buttons_summary">Usar botões de volume para alternar páginas</string>
+    <string name="tap_action">Ação de toque</string>
+    <string name="long_tap_action">Ação de toque longo</string>
+    <string name="config_reset_confirm">Redefinir as configuração para os valores padrões? Essa ação não pode ser desfeita.</string>
+    <string name="use_two_pages_landscape">Usar layout de duas páginas na orientação paisagem (beta)</string>
+    <string name="last_read">Última leitura</string>
+    <string name="none">Nenhum</string>
+    <string name="default_webtoon_zoom_out">Diminuir zoom padrão do webtoon</string>
+    <string name="fullscreen_mode">Modo de tela cheia</string>
+    <string name="reader_fullscreen_summary">Ocultar a barra de status e navegação</string>
 </resources>

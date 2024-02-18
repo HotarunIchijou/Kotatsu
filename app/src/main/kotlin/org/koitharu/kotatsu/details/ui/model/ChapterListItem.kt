@@ -1,6 +1,8 @@
 package org.koitharu.kotatsu.details.ui.model
 
 import android.text.format.DateUtils
+import org.jsoup.internal.StringUtil.StringJoiner
+import org.koitharu.kotatsu.core.model.formatNumber
 import org.koitharu.kotatsu.list.ui.model.ListModel
 import org.koitharu.kotatsu.parsers.model.MangaChapter
 
@@ -9,6 +11,14 @@ data class ChapterListItem(
 	val flags: Int,
 	private val uploadDateMs: Long,
 ) : ListModel {
+
+	var description: String? = null
+		private set
+		get() {
+			if (field != null) return field
+			field = buildDescription()
+			return field
+		}
 
 	var uploadDate: CharSequence? = null
 		private set
@@ -38,13 +48,20 @@ data class ChapterListItem(
 	val isNew: Boolean
 		get() = hasFlag(FLAG_NEW)
 
-	fun description(): CharSequence? {
-		val scanlator = chapter.scanlator?.takeUnless { it.isBlank() }
-		return when {
-			uploadDate != null && scanlator != null -> "$uploadDate • $scanlator"
-			scanlator != null -> scanlator
-			else -> uploadDate
+	private fun buildDescription(): String {
+		val joiner = StringJoiner(" • ")
+		chapter.formatNumber()?.let {
+			joiner.add("#").append(it)
 		}
+		uploadDate?.let { date ->
+			joiner.add(date.toString())
+		}
+		chapter.scanlator?.let { scanlator ->
+			if (scanlator.isNotBlank()) {
+				joiner.add(scanlator)
+			}
+		}
+		return joiner.complete()
 	}
 
 	private fun hasFlag(flag: Int): Boolean {

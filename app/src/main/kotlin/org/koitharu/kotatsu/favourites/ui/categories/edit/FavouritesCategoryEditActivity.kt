@@ -68,9 +68,8 @@ class FavouritesCategoryEditActivity :
 
 	override fun onRestoreInstanceState(savedInstanceState: Bundle) {
 		super.onRestoreInstanceState(savedInstanceState)
-		val order = savedInstanceState.getSerializableCompat<ListSortOrder>(KEY_SORT_ORDER)
-		if (order != null) {
-			selectedSortOrder = order
+		savedInstanceState.getSerializableCompat<ListSortOrder>(KEY_SORT_ORDER)?.let { 
+		    selectedSortOrder = it
 		}
 	}
 

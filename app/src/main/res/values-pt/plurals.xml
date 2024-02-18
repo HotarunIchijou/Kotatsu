@@ -18,7 +18,7 @@
     <plurals name="new_chapters">
         <item quantity="one">%1$d novo capítulo</item>
         <item quantity="many">%1$d novos capítulos</item>
-        <item quantity="other">%1$d capítulos novos</item>
+        <item quantity="other">%1$d novos capítulos</item>
     </plurals>
     <plurals name="months_ago">
         <item quantity="one">%1$d mês atrás</item>
@@ -34,5 +34,15 @@
         <item quantity="one">%1$d hora atrás</item>
         <item quantity="many">%1$d horas atrás</item>
         <item quantity="other">%1$d horas atrás</item>
+    </plurals>
+    <plurals name="hours">
+        <item quantity="one">%1$d hora</item>
+        <item quantity="many">%1$d horas</item>
+        <item quantity="other">%1$d horas</item>
+    </plurals>
+    <plurals name="minutes">
+        <item quantity="one">%1$d minuto</item>
+        <item quantity="many">%1$d minutos</item>
+        <item quantity="other">%1$d minutos</item>
     </plurals>
 </resources>

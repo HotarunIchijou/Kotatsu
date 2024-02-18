@@ -28,7 +28,7 @@
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
 		android:layout_gravity="top"
-		android:minHeight="12sp"
+		android:textSize="12sp"
 		android:visibility="gone"
 		tools:visibility="visible" />
 
@@ -47,7 +47,8 @@
 			android:layout_height="wrap_content"
 			android:elevation="@dimen/m3_card_elevated_elevation"
 			app:elevation="@dimen/m3_card_elevated_elevation"
-			app:popupTheme="@style/ThemeOverlay.Kotatsu" />
+			app:popupTheme="@style/ThemeOverlay.Kotatsu"
+			tools:menu="@menu/opt_reader_top" />
 
 	</com.google.android.material.appbar.AppBarLayout>
 
@@ -65,16 +66,15 @@
 			android:id="@+id/toolbar_bottom"
 			android:layout_width="match_parent"
 			android:layout_height="wrap_content"
-			app:menu="@menu/opt_reader_bottom">
+			tools:menu="@menu/opt_reader_bottom">
 
 			<com.google.android.material.slider.Slider
 				android:id="@+id/slider"
 				android:layout_width="match_parent"
 				android:layout_height="wrap_content"
-				android:stepSize="1"
+				android:stepSize="1.0"
 				android:valueFrom="0"
 				app:labelBehavior="floating"
-				app:tickVisible="false"
 				app:trackColorInactive="?attr/m3ColorBackground" />
 
 		</com.google.android.material.appbar.MaterialToolbar>

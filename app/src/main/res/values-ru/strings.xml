@@ -67,7 +67,7 @@
     <string name="grid_size">Размер сетки</string>
     <string name="search_on_s">Поиск по %s</string>
     <string name="delete_manga">Удалить мангу</string>
-    <string name="text_delete_local_manga">Удалить \"%s\" с устройства навсегда\?</string>
+    <string name="text_delete_local_manga">Удалить \"%s\" с устройства навсегда?</string>
     <string name="reader_settings">Настройки режима чтения</string>
     <string name="switch_pages">Листание страниц</string>
     <string name="taps_on_edges">Нажатия по краям</string>
@@ -104,7 +104,7 @@
     <string name="manga_shelf">Полка</string>
     <string name="recent_manga">Недавнее</string>
     <string name="pages_animation">Анимация пролистывания</string>
-    <string name="manga_save_location">Папка для загрузок</string>
+    <string name="manga_save_location">Папка загрузок</string>
     <string name="not_available">Недоступно</string>
     <string name="cannot_find_available_storage">Нет доступного хранилища</string>
     <string name="other_storage">Другое хранилище</string>
@@ -113,7 +113,7 @@
     <string name="favourites_category_empty">Категория пуста</string>
     <string name="read_later">Прочитать позже</string>
     <string name="updates">Обновления</string>
-    <string name="text_feed_holder">Новые главы из того, что вы читаете, будут показаны здесь</string>
+    <string name="text_feed_holder">Новые главы того, что вы читаете, будут показаны здесь</string>
     <string name="search_results">Результаты поиска</string>
     <string name="new_version_s">Новая версия: %s</string>
     <string name="size_s">Размер: %s</string>
@@ -251,7 +251,7 @@
     <string name="dns_over_https">DNS поверх HTTPS</string>
     <string name="default_mode">Режим по умолчанию</string>
     <string name="detect_reader_mode">Автоопределение режима чтения</string>
-    <string name="detect_reader_mode_summary">Автоматически определяет, является ли манга веб-комиксом</string>
+    <string name="detect_reader_mode_summary">Автоматически определять, является ли манга манхвой</string>
     <string name="disable_battery_optimization">Отключить оптимизацию батареи</string>
     <string name="disable_battery_optimization_summary">Помогает с фоновой проверкой обновлений</string>
     <string name="crash_text">Что-то пошло не так. Пожалуйста, отправьте отчёт разработчикам, чтобы помочь всё исправить.</string>
@@ -327,7 +327,7 @@
     <string name="manga_error_description_pattern">Сведения об ошибке:&lt;br&gt;&lt;tt&gt;%1$s&lt;/tt&gt;&lt;br&gt;&lt;br&gt;1. Попробуйте &lt;a href=%2$s&gt;открыть мангу в веб-браузере&lt;/a&gt;, чтобы убедиться, что она доступна в источнике&lt;br&gt;2. Убедитесь, что вы используете &lt;a href=kotatsu://about&gt;последнюю версию Kotatsu&lt;/a&gt;&lt;br&gt;3. Если возможно, отправьте отчёт об ошибке разработчикам.</string>
     <string name="history_shortcuts">Показывать ярлыки последней прочитанной манги</string>
     <string name="history_shortcuts_summary">Сделать недавно прочитанную мангу доступной по долгому нажатию на иконку приложения</string>
-    <string name="reader_control_ltr_summary">Нажатие на правый край или нажатие правой клавиши всегда переключает на следующую страницу</string>
+    <string name="reader_control_ltr_summary">Навигация «Далее» всегда приводит к следующей странице при использовании мыши и клавиатуры.</string>
     <string name="reader_control_ltr">Эргономичное управление режимом чтения</string>
     <string name="reset">Сбросить</string>
     <string name="discard">Отклонить</string>
@@ -423,7 +423,7 @@
     <string name="images_proxy_title">Прокси для оптимизации изображений</string>
     <string name="images_procy_description">Используйте службу wsrv.nl, чтобы уменьшить использование трафика и ускорить загрузку изображений, если это возможно</string>
     <string name="invert_colors">Инвертировать цвета</string>
-    <string name="webtoon_zoom_summary">Включить жест увеличения масштаба в режиме манхвы</string>
+    <string name="webtoon_zoom_summary">Разрешить жесты масштабирования в режиме манхвы</string>
     <string name="network">Сеть</string>
     <string name="data_and_privacy">Данные и конфиденциальность</string>
     <string name="restore_summary">Восстановить ранее созданную резервную копию</string>
@@ -551,4 +551,41 @@
     <string name="rating_safe">Безопасный</string>
     <string name="rating_suggestive">С намёками</string>
     <string name="rating_adult">Взрослый</string>
+    <string name="approximate_reading_time">Примерное время чтения</string>
+    <string name="category_hidden_done">Эта категория была скрыта с главного экрана и доступна через Меню → Управление категориями</string>
+    <string name="mark_as_completed">Отметить как завершённое</string>
+    <string name="mark_as_completed_prompt">Отметить выбранную мангу как полностью прочитанную?
+\n
+\nВнимание: текущий прогресс чтения будет потерян.</string>
+    <string name="approximate_remaining_time">Примерное оставшееся время</string>
+    <string name="remaining_time_pattern">%1$s %2$s</string>
+    <string name="volume_unknown">Неизвестный том</string>
+    <string name="volume_">Том %d</string>
+    <string name="incognito_mode_hint">Ваш прогресс чтения не сохранится</string>
+    <string name="vertical">Вертикальный</string>
+    <string name="last_read">Последнее прочитанное</string>
+    <string name="two_pages">Две страницы</string>
+    <string name="prev_page">Предыдущая страница</string>
+    <string name="next_page">Следующая страница</string>
+    <string name="tap_action">Действие при касании</string>
+    <string name="long_tap_action">Действие при длинном касании</string>
+    <string name="none">Ничего</string>
+    <string name="show_menu">Показать меню</string>
+    <string name="toggle_ui">Показать/Скрыть интерфейс</string>
+    <string name="prev_chapter">Предыдущая глава</string>
+    <string name="next_chapter">Следующая глава</string>
+    <string name="switch_pages_volume_buttons">Включить кнопки громкости</string>
+    <string name="switch_pages_volume_buttons_summary">Использовать кнопки громкости для переключения страниц</string>
+    <string name="reader_actions">Действия в режиме чтения</string>
+    <string name="reader_actions_summary">Настройка действий для сенсорных областей экрана</string>
+    <string name="email_password_enter_hint">Введите свой адрес электронной почты и пароль, чтобы продолжить</string>
+    <string name="config_reset_confirm">Сбросить настройки до значений по умолчанию? Это действие нельзя отменить.</string>
+    <string name="use_two_pages_landscape">Использовать двухстраничный макет в альбомной ориентации (бета)</string>
+    <string name="default_webtoon_zoom_out">Отдаление в режиме манхвы</string>
+    <string name="fullscreen_mode">На весь экран</string>
+    <string name="reader_fullscreen_summary">Скрывать интерфейс системы</string>
+    <string name="reading_time_estimation">Отображать предполагаемое время чтения</string>
+    <string name="reading_time_estimation_summary">Данное значение может быть неточным</string>
+    <string name="check_for_new_chapters_disabled">Проверка новых глав отключена</string>
+    <string name="suggestions_unavailable_text">Функция предложения отключена</string>
 </resources>

@@ -95,6 +95,22 @@ abstract class FavouritesDao {
 		return findCoversImpl(query)
 	}
 
+	suspend fun findCovers(order: ListSortOrder, limit: Int): List<Cover> {
+		val orderBy = getOrderBy(order)
+
+		@Language("RoomSql")
+		val query = SimpleSQLiteQuery(
+			"SELECT manga.cover_url AS url, manga.source AS source FROM favourites " +
+				"LEFT JOIN manga ON favourites.manga_id = manga.manga_id " +
+				"WHERE deleted_at = 0 GROUP BY manga.manga_id ORDER BY $orderBy LIMIT ?",
+			arrayOf<Any>(limit),
+		)
+		return findCoversImpl(query)
+	}
+
+	@Query("SELECT COUNT(DISTINCT manga_id) FROM favourites WHERE deleted_at = 0")
+	abstract fun observeMangaCount(): Flow<Int>
+
 	@Query("SELECT * FROM manga WHERE manga_id IN (SELECT manga_id FROM favourites WHERE deleted_at = 0)")
 	abstract suspend fun findAllManga(): List<MangaEntity>
 
@@ -175,9 +191,10 @@ abstract class FavouritesDao {
 		ListSortOrder.RATING -> "manga.rating DESC"
 		ListSortOrder.NEWEST -> "favourites.created_at DESC"
 		ListSortOrder.ALPHABETIC -> "manga.title ASC"
-		ListSortOrder.NEW_CHAPTERS -> "(SELECT chapters_new FROM tracks WHERE tracks.manga_id = manga.manga_id) DESC"
-		ListSortOrder.UPDATED, // for legacy support
-		ListSortOrder.PROGRESS -> "(SELECT percent FROM history WHERE history.manga_id = manga.manga_id) DESC"
+		ListSortOrder.ALPHABETIC_REVERSE -> "manga.title DESC"
+		ListSortOrder.NEW_CHAPTERS -> "IFNULL((SELECT chapters_new FROM tracks WHERE tracks.manga_id = manga.manga_id), 0) DESC"
+		ListSortOrder.PROGRESS -> "IFNULL((SELECT percent FROM history WHERE history.manga_id = manga.manga_id), 0) DESC"
+		ListSortOrder.LAST_READ -> "IFNULL((SELECT updated_at FROM history WHERE history.manga_id = manga.manga_id), 0) DESC"
 
 		else -> throw IllegalArgumentException("Sort order $sortOrder is not supported")
 	}

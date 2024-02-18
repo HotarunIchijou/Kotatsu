@@ -48,6 +48,7 @@ import org.koitharu.kotatsu.core.util.ext.scaleUpActivityOptionsOf
 import org.koitharu.kotatsu.core.util.ext.showOrHide
 import org.koitharu.kotatsu.core.util.ext.textAndVisible
 import org.koitharu.kotatsu.databinding.FragmentDetailsBinding
+import org.koitharu.kotatsu.details.data.ReadingTime
 import org.koitharu.kotatsu.details.ui.model.ChapterListItem
 import org.koitharu.kotatsu.details.ui.model.HistoryInfo
 import org.koitharu.kotatsu.details.ui.related.RelatedMangaActivity
@@ -118,6 +119,7 @@ class DetailsFragment :
 		viewModel.localSize.observe(viewLifecycleOwner, ::onLocalSizeChanged)
 		viewModel.relatedManga.observe(viewLifecycleOwner, ::onRelatedMangaChanged)
 		viewModel.chapters.observe(viewLifecycleOwner, ::onChaptersChanged)
+		viewModel.readingTime.observe(viewLifecycleOwner, ::onReadingTimeChanged)
 	}
 
 	override fun onItemClick(item: Bookmark, view: View) {
@@ -209,6 +211,19 @@ class DetailsFragment :
 			val chaptersText = resources.getQuantityString(R.plurals.chapters, count, count)
 			infoLayout.textViewChapters.text = chaptersText
 		}
+	}
+
+	private fun onReadingTimeChanged(time: ReadingTime?) {
+		val binding = viewBinding ?: return
+		if (time == null) {
+			binding.approximateReadTimeLayout.isVisible = false
+			return
+		}
+		binding.approximateReadTime.text = time.format(resources)
+		binding.approximateReadTimeTitle.setText(
+			if (time.isContinue) R.string.approximate_remaining_time else R.string.approximate_reading_time
+		)
+		binding.approximateReadTimeLayout.isVisible = true
 	}
 
 	private fun onDescriptionChanged(description: CharSequence?) {

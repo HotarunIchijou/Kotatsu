@@ -3,6 +3,7 @@ package org.koitharu.kotatsu.core.model
 import android.net.Uri
 import androidx.annotation.DrawableRes
 import androidx.annotation.StringRes
+import androidx.collection.MutableObjectIntMap
 import androidx.core.os.LocaleListCompat
 import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.core.util.ext.iterator
@@ -13,6 +14,8 @@ import org.koitharu.kotatsu.parsers.model.MangaChapter
 import org.koitharu.kotatsu.parsers.model.MangaSource
 import org.koitharu.kotatsu.parsers.model.MangaState
 import org.koitharu.kotatsu.parsers.util.mapToSet
+import java.text.DecimalFormat
+import java.text.DecimalFormatSymbols
 import com.google.android.material.R as materialR
 
 @JvmName("mangaIds")
@@ -29,12 +32,14 @@ fun Collection<ChapterListItem>.countChaptersByBranch(): Int {
 	if (size <= 1) {
 		return size
 	}
-	val acc = HashMap<String?, Int>()
+	val acc = MutableObjectIntMap<String?>()
 	for (item in this) {
 		val branch = item.chapter.branch
-		acc[branch] = (acc[branch] ?: 0) + 1
+		acc[branch] = acc.getOrDefault(branch, 0) + 1
 	}
-	return acc.values.max()
+	var max = 0
+	acc.forEachValue { x -> if (x > max) max = x }
+	return max
 }
 
 @get:StringRes
@@ -113,3 +118,16 @@ val Manga.appUrl: Uri
 		.appendQueryParameter("name", title)
 		.appendQueryParameter("url", url)
 		.build()
+
+private val chaptersNumberFormat = DecimalFormat("#.#").also { f ->
+	f.decimalFormatSymbols = DecimalFormatSymbols.getInstance().also {
+		it.decimalSeparator = '.'
+	}
+}
+
+fun MangaChapter.formatNumber(): String? {
+	if (number <= 0f) {
+		return null
+	}
+	return chaptersNumberFormat.format(number.toDouble())
+}

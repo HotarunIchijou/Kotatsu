@@ -60,6 +60,11 @@ class FavouritesRepository @Inject constructor(
 			.flatMapLatest { order -> observeAll(categoryId, order) }
 	}
 
+	fun observeMangaCount(): Flow<Int> {
+		return db.getFavouritesDao().observeMangaCount()
+			.distinctUntilChanged()
+	}
+
 	fun observeCategories(): Flow<List<FavouriteCategory>> {
 		return db.getFavouriteCategoriesDao().observeAll().mapItems {
 			it.toFavouriteCategory()
@@ -87,6 +92,10 @@ class FavouritesRepository @Inject constructor(
 					res
 				}
 			}
+	}
+
+	suspend fun getAllFavoritesCovers(order: ListSortOrder, limit: Int): List<Cover> {
+		return db.getFavouritesDao().findCovers(order, limit)
 	}
 
 	fun observeCategory(id: Long): Flow<FavouriteCategory?> {

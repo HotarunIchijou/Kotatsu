@@ -22,12 +22,14 @@ import org.koitharu.kotatsu.core.util.ext.call
 import org.koitharu.kotatsu.core.util.ext.printStackTraceDebug
 import org.koitharu.kotatsu.core.util.ext.require
 import org.koitharu.kotatsu.core.util.ext.requireValue
+import org.koitharu.kotatsu.history.data.HistoryRepository
 import org.koitharu.kotatsu.list.ui.model.ListModel
 import org.koitharu.kotatsu.list.ui.model.LoadingFooter
 import org.koitharu.kotatsu.list.ui.model.LoadingState
 import org.koitharu.kotatsu.parsers.util.runCatchingCancellable
 import org.koitharu.kotatsu.scrobbling.common.domain.Scrobbler
 import org.koitharu.kotatsu.scrobbling.common.domain.model.ScrobblerManga
+import org.koitharu.kotatsu.scrobbling.common.domain.model.ScrobblingStatus
 import org.koitharu.kotatsu.scrobbling.common.ui.selector.model.ScrobblerHint
 import javax.inject.Inject
 
@@ -35,6 +37,7 @@ import javax.inject.Inject
 class ScrobblingSelectorViewModel @Inject constructor(
 	savedStateHandle: SavedStateHandle,
 	scrobblers: Set<@JvmSuppressWildcards Scrobbler>,
+	private val historyRepository: HistoryRepository,
 ) : BaseViewModel() {
 
 	val manga = savedStateHandle.require<ParcelableManga>(MangaIntent.KEY_MANGA).manga
@@ -92,6 +95,13 @@ class ScrobblingSelectorViewModel @Inject constructor(
 		loadList(append = false)
 	}
 
+	fun selectItem(id: Long) {
+		if (doneJob?.isActive == true) {
+			return
+		}
+		selectedItemId.value = id
+	}
+
 	fun loadNextPage() {
 		if (scrobblerMangaList.value.isNotEmpty() && hasNextPage.value) {
 			loadList(append = true)
@@ -109,7 +119,7 @@ class ScrobblingSelectorViewModel @Inject constructor(
 		if (loadingJob?.isActive == true) {
 			return
 		}
-		loadingJob = launchLoadingJob(Dispatchers.Default) {
+		loadingJob = launchJob(Dispatchers.Default) {
 			listError.value = null
 			val offset = if (append) scrobblerMangaList.value.size else 0
 			runCatchingCancellable {
@@ -136,8 +146,26 @@ class ScrobblingSelectorViewModel @Inject constructor(
 		if (targetId == NO_ID) {
 			onClose.call(Unit)
 		}
-		doneJob = launchJob(Dispatchers.Default) {
+		doneJob = launchLoadingJob(Dispatchers.Default) {
+			val prevInfo = currentScrobbler.getScrobblingInfoOrNull(manga.id)
 			currentScrobbler.linkManga(manga.id, targetId)
+			val history = historyRepository.getOne(manga)
+			currentScrobbler.updateScrobblingInfo(
+				mangaId = manga.id,
+				rating = prevInfo?.rating ?: manga.rating,
+				status = prevInfo?.status ?: if (history == null) {
+					ScrobblingStatus.PLANNED
+				} else {
+					ScrobblingStatus.READING
+				},
+				comment = prevInfo?.comment,
+			)
+			if (history != null) {
+				currentScrobbler.scrobble(
+					manga = manga,
+					chapterId = history.chapterId,
+				)
+			}
 			onClose.call(Unit)
 		}
 	}
