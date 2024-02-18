@@ -25,12 +25,13 @@ import org.koitharu.kotatsu.tracker.data.toTrackingLogItem
 import org.koitharu.kotatsu.tracker.domain.model.MangaTracking
 import org.koitharu.kotatsu.tracker.domain.model.MangaUpdates
 import org.koitharu.kotatsu.tracker.domain.model.TrackingLogItem
-import java.util.Date
+import java.time.Instant
 import java.util.concurrent.atomic.AtomicBoolean
 import javax.inject.Inject
 import javax.inject.Provider
 
 private const val NO_ID = 0L
+private const val MAX_QUERY_IDS = 100
 
 @Reusable
 class TrackingRepository @Inject constructor(
@@ -65,7 +66,14 @@ class TrackingRepository @Inject constructor(
 
 	suspend fun getTracks(mangaList: Collection<Manga>): List<MangaTracking> {
 		val ids = mangaList.mapToSet { it.id }
-		val tracks = db.getTracksDao().findAll(ids).groupBy { it.mangaId }
+		val dao = db.getTracksDao()
+		val tracks = if (ids.size <= MAX_QUERY_IDS) {
+			dao.findAll(ids)
+		} else {
+			// TODO split tracks in the worker
+			ids.windowed(MAX_QUERY_IDS, MAX_QUERY_IDS, true)
+				.flatMap { dao.findAll(it) }
+		}.groupBy { it.mangaId }
 		val idSet = HashSet<Long>()
 		val result = ArrayList<MangaTracking>(mangaList.size)
 		for (item in mangaList) {
@@ -81,7 +89,7 @@ class TrackingRepository @Inject constructor(
 			result += MangaTracking(
 				manga = manga,
 				lastChapterId = track?.lastChapterId ?: NO_ID,
-				lastCheck = track?.lastCheck?.takeUnless { it == 0L }?.let(::Date),
+				lastCheck = track?.lastCheck?.takeUnless { it == 0L }?.let(Instant::ofEpochMilli),
 			)
 		}
 		return result
@@ -93,7 +101,7 @@ class TrackingRepository @Inject constructor(
 		return MangaTracking(
 			manga = manga,
 			lastChapterId = track?.lastChapterId ?: NO_ID,
-			lastCheck = track?.lastCheck?.takeUnless { it == 0L }?.let(::Date),
+			lastCheck = track?.lastCheck?.takeUnless { it == 0L }?.let(Instant::ofEpochMilli),
 		)
 	}
 

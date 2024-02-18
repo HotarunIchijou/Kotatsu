@@ -22,13 +22,14 @@ import androidx.appcompat.widget.PopupMenu
 import androidx.core.graphics.Insets
 import androidx.core.text.buildSpannedString
 import androidx.core.text.inSpans
+import androidx.core.view.MenuHost
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
 import com.google.android.material.bottomsheet.BottomSheetBehavior
-import com.google.android.material.snackbar.BaseTransientBottomBar
 import com.google.android.material.snackbar.Snackbar
+import com.google.android.material.tabs.TabLayoutMediator
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.filterNotNull
@@ -37,15 +38,19 @@ import org.koitharu.kotatsu.core.exceptions.resolve.SnackbarErrorObserver
 import org.koitharu.kotatsu.core.model.parcelable.ParcelableManga
 import org.koitharu.kotatsu.core.os.AppShortcutManager
 import org.koitharu.kotatsu.core.parser.MangaIntent
+import org.koitharu.kotatsu.core.prefs.AppSettings
 import org.koitharu.kotatsu.core.ui.BaseActivity
 import org.koitharu.kotatsu.core.ui.util.MenuInvalidator
+import org.koitharu.kotatsu.core.ui.util.ReversibleActionObserver
 import org.koitharu.kotatsu.core.util.ext.doOnExpansionsChanged
 import org.koitharu.kotatsu.core.util.ext.getAnimationDuration
 import org.koitharu.kotatsu.core.util.ext.getThemeColor
 import org.koitharu.kotatsu.core.util.ext.isAnimationsEnabled
 import org.koitharu.kotatsu.core.util.ext.measureHeight
+import org.koitharu.kotatsu.core.util.ext.menuView
 import org.koitharu.kotatsu.core.util.ext.observe
 import org.koitharu.kotatsu.core.util.ext.observeEvent
+import org.koitharu.kotatsu.core.util.ext.recyclerView
 import org.koitharu.kotatsu.core.util.ext.setNavigationBarTransparentCompat
 import org.koitharu.kotatsu.core.util.ext.setNavigationIconSafe
 import org.koitharu.kotatsu.core.util.ext.setOnContextClickListenerCompat
@@ -54,6 +59,7 @@ import org.koitharu.kotatsu.databinding.ActivityDetailsBinding
 import org.koitharu.kotatsu.details.service.MangaPrefetchService
 import org.koitharu.kotatsu.details.ui.model.ChapterListItem
 import org.koitharu.kotatsu.details.ui.model.HistoryInfo
+import org.koitharu.kotatsu.details.ui.pager.DetailsPagerAdapter
 import org.koitharu.kotatsu.download.ui.worker.DownloadStartedObserver
 import org.koitharu.kotatsu.main.ui.owners.NoModalBottomSheetOwner
 import org.koitharu.kotatsu.parsers.model.Manga
@@ -74,10 +80,18 @@ class DetailsActivity :
 	@Inject
 	lateinit var appShortcutManager: AppShortcutManager
 
+	@Inject
+	lateinit var settings: AppSettings
+
 	private var buttonTip: WeakReference<ButtonTip>? = null
 
 	private val viewModel: DetailsViewModel by viewModels()
-	private lateinit var chaptersMenuProvider: ChaptersMenuProvider
+
+	val secondaryMenuHost: MenuHost
+		get() = viewBinding.toolbarChapters ?: this
+
+	var bottomSheetMediator: ChaptersBottomSheetMediator? = null
+		private set
 
 	override fun onCreate(savedInstanceState: Bundle?) {
 		super.onCreate(savedInstanceState)
@@ -93,24 +107,22 @@ class DetailsActivity :
 
 		if (viewBinding.layoutBottom != null) {
 			val behavior = BottomSheetBehavior.from(checkNotNull(viewBinding.layoutBottom))
-			val bsMediator = ChaptersBottomSheetMediator(behavior)
+			val bsMediator = ChaptersBottomSheetMediator(behavior, viewBinding.pager)
 			actionModeDelegate.addListener(bsMediator)
 			checkNotNull(viewBinding.layoutBsHeader).addOnLayoutChangeListener(bsMediator)
 			onBackPressedDispatcher.addCallback(bsMediator)
-			chaptersMenuProvider = ChaptersMenuProvider(viewModel, bsMediator)
+			bottomSheetMediator = bsMediator
 			behavior.doOnExpansionsChanged(::onChaptersSheetStateChanged)
 			viewBinding.toolbarChapters?.setNavigationOnClickListener {
 				behavior.state = BottomSheetBehavior.STATE_COLLAPSED
 			}
 			viewBinding.toolbarChapters?.setOnGenericMotionListener(bsMediator)
-		} else {
-			chaptersMenuProvider = ChaptersMenuProvider(viewModel, null)
-			addMenuProvider(chaptersMenuProvider)
 		}
-		onBackPressedDispatcher.addCallback(chaptersMenuProvider)
+		initPager()
 
 		viewModel.manga.filterNotNull().observe(this, ::onMangaUpdated)
 		viewModel.onMangaRemoved.observeEvent(this, ::onMangaRemoved)
+		viewModel.newChaptersCount.observe(this, ::onNewChaptersChanged)
 		viewModel.onError.observeEvent(
 			this,
 			SnackbarErrorObserver(
@@ -124,19 +136,16 @@ class DetailsActivity :
 				},
 			),
 		)
-		viewModel.onShowToast.observeEvent(this) {
-			makeSnackbar(getString(it), Snackbar.LENGTH_SHORT).show()
-		}
+		viewModel.onActionDone.observeEvent(this, ReversibleActionObserver(viewBinding.containerDetails))
 		viewModel.onShowTip.observeEvent(this) { showTip() }
 		viewModel.historyInfo.observe(this, ::onHistoryChanged)
 		viewModel.selectedBranch.observe(this) {
 			viewBinding.toolbarChapters?.subtitle = it
 			viewBinding.textViewSubtitle?.textAndVisible = it
 		}
-		viewModel.isChaptersReversed.observe(
-			this,
-			MenuInvalidator(viewBinding.toolbarChapters ?: this),
-		)
+		val chaptersMenuInvalidator = MenuInvalidator(viewBinding.toolbarChapters ?: this)
+		viewModel.isChaptersReversed.observe(this, chaptersMenuInvalidator)
+		viewModel.isChaptersEmpty.observe(this, chaptersMenuInvalidator)
 		val menuInvalidator = MenuInvalidator(this)
 		viewModel.favouriteCategories.observe(this, menuInvalidator)
 		viewModel.remoteManga.observe(this, menuInvalidator)
@@ -153,7 +162,7 @@ class DetailsActivity :
 			DetailsMenuProvider(
 				activity = this,
 				viewModel = viewModel,
-				snackbarHost = viewBinding.containerChapters,
+				snackbarHost = viewBinding.pager,
 				appShortcutManager = appShortcutManager,
 			),
 		)
@@ -217,12 +226,11 @@ class DetailsActivity :
 			TransitionManager.beginDelayedTransition(toolbar, transition)
 		}
 		if (isExpanded) {
-			toolbar.addMenuProvider(chaptersMenuProvider)
 			toolbar.setNavigationIconSafe(materialR.drawable.abc_ic_clear_material)
 		} else {
-			toolbar.removeMenuProvider(chaptersMenuProvider)
 			toolbar.navigationIcon = null
 		}
+		toolbar.menuView?.isVisible = isExpanded
 		viewBinding.buttonRead.isGone = isExpanded
 	}
 
@@ -293,6 +301,18 @@ class DetailsActivity :
 		viewBinding.textViewTitle?.text = text
 	}
 
+	private fun onNewChaptersChanged(count: Int) {
+		val tab = viewBinding.tabs.getTabAt(0) ?: return
+		if (count == 0) {
+			tab.removeBadge()
+		} else {
+			val badge = tab.orCreateBadge
+			badge.horizontalOffsetWithText = -resources.getDimensionPixelOffset(R.dimen.margin_small)
+			badge.number = count
+			badge.isVisible = true
+		}
+	}
+
 	private fun showBranchPopupMenu(v: View) {
 		val menu = PopupMenu(v.context, v)
 		val branches = viewModel.branches.value
@@ -326,9 +346,8 @@ class DetailsActivity :
 		val manga = viewModel.manga.value ?: return
 		val chapterId = viewModel.historyInfo.value.history?.chapterId
 		if (chapterId != null && manga.chapters?.none { x -> x.id == chapterId } == true) {
-			val snackbar =
-				makeSnackbar(getString(R.string.chapter_is_missing), Snackbar.LENGTH_SHORT)
-			snackbar.show()
+			Snackbar.make(viewBinding.containerDetails, R.string.chapter_is_missing, Snackbar.LENGTH_SHORT)
+				.show()
 		} else {
 			startActivity(
 				IntentBuilder(this)
@@ -343,6 +362,14 @@ class DetailsActivity :
 		}
 	}
 
+	private fun initPager() {
+		viewBinding.pager.recyclerView?.isNestedScrollingEnabled = false
+		val adapter = DetailsPagerAdapter(this)
+		viewBinding.pager.adapter = adapter
+		TabLayoutMediator(viewBinding.tabs, viewBinding.pager, adapter).attach()
+		viewBinding.pager.setCurrentItem(settings.defaultDetailsTab, false)
+	}
+
 	private fun showBottomSheet(isVisible: Boolean) {
 		val view = viewBinding.layoutBottom ?: return
 		if (view.isVisible == isVisible) return
@@ -351,17 +378,6 @@ class DetailsActivity :
 		transition.interpolator = AccelerateDecelerateInterpolator()
 		TransitionManager.beginDelayedTransition(viewBinding.root as ViewGroup, transition)
 		view.isVisible = isVisible
-	}
-
-	private fun makeSnackbar(
-		text: CharSequence,
-		@BaseTransientBottomBar.Duration duration: Int,
-	): Snackbar {
-		val sb = Snackbar.make(viewBinding.containerDetails, text, duration)
-		if (viewBinding.layoutBottom?.isVisible == true) {
-			sb.anchorView = viewBinding.toolbarChapters
-		}
-		return sb
 	}
 
 	private class PrefetchObserver(

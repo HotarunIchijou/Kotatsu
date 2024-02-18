@@ -1,15 +1,14 @@
 package org.koitharu.kotatsu.reader.domain
 
 import android.content.Context
-import android.graphics.Bitmap
 import android.graphics.BitmapFactory
 import android.net.Uri
 import androidx.annotation.AnyThread
 import androidx.collection.LongSparseArray
 import androidx.collection.set
+import androidx.core.net.toFile
 import androidx.core.net.toUri
 import dagger.hilt.android.ActivityRetainedLifecycle
-import dagger.hilt.android.lifecycle.RetainedLifecycle
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.android.scopes.ActivityRetainedScoped
 import kotlinx.coroutines.CoroutineExceptionHandler
@@ -26,6 +25,7 @@ import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import okhttp3.OkHttpClient
 import okhttp3.Request
+import okio.use
 import org.koitharu.kotatsu.core.network.CommonHeaders
 import org.koitharu.kotatsu.core.network.ImageProxyInterceptor
 import org.koitharu.kotatsu.core.network.MangaHttpClient
@@ -35,6 +35,8 @@ import org.koitharu.kotatsu.core.prefs.AppSettings
 import org.koitharu.kotatsu.core.util.FileSize
 import org.koitharu.kotatsu.core.util.RetainedLifecycleCoroutineScope
 import org.koitharu.kotatsu.core.util.ext.URI_SCHEME_ZIP
+import org.koitharu.kotatsu.core.util.ext.compressToPNG
+import org.koitharu.kotatsu.core.util.ext.ensureRamAtLeast
 import org.koitharu.kotatsu.core.util.ext.ensureSuccess
 import org.koitharu.kotatsu.core.util.ext.exists
 import org.koitharu.kotatsu.core.util.ext.getCompletionResultOrNull
@@ -49,10 +51,11 @@ import org.koitharu.kotatsu.local.data.isZipUri
 import org.koitharu.kotatsu.parsers.model.MangaPage
 import org.koitharu.kotatsu.parsers.model.MangaSource
 import org.koitharu.kotatsu.reader.ui.pager.ReaderPage
-import java.io.File
 import java.util.LinkedList
 import java.util.concurrent.atomic.AtomicInteger
+import java.util.zip.ZipFile
 import javax.inject.Inject
+import kotlin.concurrent.Volatile
 import kotlin.coroutines.AbstractCoroutineContextElement
 import kotlin.coroutines.CoroutineContext
 
@@ -65,11 +68,7 @@ class PageLoader @Inject constructor(
 	private val settings: AppSettings,
 	private val mangaRepositoryFactory: MangaRepository.Factory,
 	private val imageProxyInterceptor: ImageProxyInterceptor,
-) : RetainedLifecycle.OnClearedListener {
-
-	init {
-		lifecycle.addOnClearedListener(this)
-	}
+) {
 
 	val loaderScope = RetainedLifecycleCoroutineScope(lifecycle) + InternalErrorHandler() + Dispatchers.Default
 
@@ -77,16 +76,12 @@ class PageLoader @Inject constructor(
 	private val semaphore = Semaphore(3)
 	private val convertLock = Mutex()
 	private val prefetchLock = Mutex()
+
+	@Volatile
 	private var repository: MangaRepository? = null
 	private val prefetchQueue = LinkedList<MangaPage>()
 	private val counter = AtomicInteger(0)
 	private var prefetchQueueLimit = PREFETCH_LIMIT_DEFAULT // TODO adaptive
-
-	override fun onCleared() {
-		synchronized(tasks) {
-			tasks.clear()
-		}
-	}
 
 	fun isPrefetchApplicable(): Boolean {
 		return repository is RemoteMangaRepository
@@ -131,21 +126,30 @@ class PageLoader @Inject constructor(
 		return loadPageAsync(page, force).await()
 	}
 
-	suspend fun convertInPlace(file: File) {
-		convertLock.withLock {
-			if (context.ramAvailable < file.length() * 2) {
-				return@withLock
-			}
-			runInterruptible(Dispatchers.Default) {
-				val image = BitmapFactory.decodeFile(file.absolutePath)
-				try {
-					file.outputStream().use { out ->
-						image.compress(Bitmap.CompressFormat.PNG, 100, out)
+	suspend fun convertBimap(uri: Uri): Uri = convertLock.withLock {
+		if (uri.isZipUri()) {
+			val bitmap = runInterruptible(Dispatchers.IO) {
+				ZipFile(uri.schemeSpecificPart).use { zip ->
+					val entry = zip.getEntry(uri.fragment)
+					context.ensureRamAtLeast(entry.size * 2)
+					zip.getInputStream(zip.getEntry(uri.fragment)).use {
+						BitmapFactory.decodeStream(it)
 					}
-				} finally {
-					image.recycle()
 				}
 			}
+			cache.put(uri.toString(), bitmap).toUri()
+		} else {
+			val file = uri.toFile()
+			context.ensureRamAtLeast(file.length() * 2)
+			val image = runInterruptible(Dispatchers.IO) {
+				BitmapFactory.decodeFile(file.absolutePath)
+			}
+			try {
+				image.compressToPNG(file)
+			} finally {
+				image.recycle()
+			}
+			uri
 		}
 	}
 
@@ -237,7 +241,7 @@ class PageLoader @Inject constructor(
 	companion object {
 
 		private const val PROGRESS_UNDEFINED = -1f
-		private const val PREFETCH_LIMIT_DEFAULT = 10
+		private const val PREFETCH_LIMIT_DEFAULT = 6
 		private const val PREFETCH_MIN_RAM_MB = 80L
 
 		fun createPageRequest(page: MangaPage, pageUrl: String) = Request.Builder()

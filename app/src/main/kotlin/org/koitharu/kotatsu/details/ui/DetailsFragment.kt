@@ -10,8 +10,6 @@ import android.widget.Toast
 import androidx.appcompat.widget.PopupMenu
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.Insets
-import androidx.core.text.buildSpannedString
-import androidx.core.text.color
 import androidx.core.text.method.LinkMovementMethodCompat
 import androidx.core.view.isGone
 import androidx.core.view.isVisible
@@ -23,13 +21,14 @@ import coil.request.SuccessResult
 import coil.util.CoilUtils
 import com.google.android.material.chip.Chip
 import dagger.hilt.android.AndroidEntryPoint
-import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.filterNotNull
 import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.bookmarks.domain.Bookmark
 import org.koitharu.kotatsu.bookmarks.ui.adapter.BookmarksAdapter
 import org.koitharu.kotatsu.bookmarks.ui.sheet.BookmarksSheet
 import org.koitharu.kotatsu.core.model.countChaptersByBranch
+import org.koitharu.kotatsu.core.model.iconResId
+import org.koitharu.kotatsu.core.model.titleResId
 import org.koitharu.kotatsu.core.ui.BaseFragment
 import org.koitharu.kotatsu.core.ui.BaseListAdapter
 import org.koitharu.kotatsu.core.ui.image.CoverSizeResolver
@@ -40,7 +39,6 @@ import org.koitharu.kotatsu.core.util.FileSize
 import org.koitharu.kotatsu.core.util.ext.crossfade
 import org.koitharu.kotatsu.core.util.ext.drawableTop
 import org.koitharu.kotatsu.core.util.ext.enqueueWith
-import org.koitharu.kotatsu.core.util.ext.getThemeColor
 import org.koitharu.kotatsu.core.util.ext.ifNullOrEmpty
 import org.koitharu.kotatsu.core.util.ext.isTextTruncated
 import org.koitharu.kotatsu.core.util.ext.observe
@@ -66,7 +64,6 @@ import org.koitharu.kotatsu.list.ui.size.StaticItemSizeResolver
 import org.koitharu.kotatsu.main.ui.owners.NoModalBottomSheetOwner
 import org.koitharu.kotatsu.parsers.model.Manga
 import org.koitharu.kotatsu.parsers.model.MangaSource
-import org.koitharu.kotatsu.parsers.model.MangaState
 import org.koitharu.kotatsu.parsers.model.MangaTag
 import org.koitharu.kotatsu.reader.ui.ReaderActivity
 import org.koitharu.kotatsu.scrobbling.common.domain.model.ScrobblingInfo
@@ -74,7 +71,6 @@ import org.koitharu.kotatsu.scrobbling.common.ui.selector.ScrobblingSelectorShee
 import org.koitharu.kotatsu.search.ui.MangaListActivity
 import org.koitharu.kotatsu.search.ui.SearchActivity
 import javax.inject.Inject
-import com.google.android.material.R as materialR
 
 @AndroidEntryPoint
 class DetailsFragment :
@@ -121,7 +117,7 @@ class DetailsFragment :
 		viewModel.description.observe(viewLifecycleOwner, ::onDescriptionChanged)
 		viewModel.localSize.observe(viewLifecycleOwner, ::onLocalSizeChanged)
 		viewModel.relatedManga.observe(viewLifecycleOwner, ::onRelatedMangaChanged)
-		combine(viewModel.chapters, viewModel.newChaptersCount, ::Pair).observe(viewLifecycleOwner, ::onChaptersChanged)
+		viewModel.chapters.observe(viewLifecycleOwner, ::onChaptersChanged)
 	}
 
 	override fun onItemClick(item: Bookmark, view: View) {
@@ -181,28 +177,13 @@ class DetailsFragment :
 				ratingBar.isVisible = false
 			}
 
-			when (manga.state) {
-				MangaState.FINISHED -> infoLayout.textViewState.apply {
-					textAndVisible = resources.getString(R.string.state_finished)
-					drawableTop = ContextCompat.getDrawable(context, R.drawable.ic_state_finished)
+			infoLayout.textViewState.apply {
+				manga.state?.let { state ->
+					textAndVisible = resources.getString(state.titleResId)
+					drawableTop = ContextCompat.getDrawable(context, state.iconResId)
+				} ?: run {
+					isVisible = false
 				}
-
-				MangaState.ONGOING -> infoLayout.textViewState.apply {
-					textAndVisible = resources.getString(R.string.state_ongoing)
-					drawableTop = ContextCompat.getDrawable(context, R.drawable.ic_state_ongoing)
-				}
-
-				MangaState.ABANDONED -> infoLayout.textViewState.apply {
-					textAndVisible = resources.getString(R.string.state_abandoned)
-					drawableTop = ContextCompat.getDrawable(context, R.drawable.ic_state_abandoned)
-				}
-
-				MangaState.PAUSED -> infoLayout.textViewState.apply {
-					textAndVisible = resources.getString(R.string.state_paused)
-					drawableTop = ContextCompat.getDrawable(context, R.drawable.ic_action_pause)
-				}
-
-				null -> infoLayout.textViewState.isVisible = false
 			}
 			if (manga.source == MangaSource.LOCAL) {
 				infoLayout.textViewSource.isVisible = false
@@ -218,8 +199,7 @@ class DetailsFragment :
 		}
 	}
 
-	private fun onChaptersChanged(data: Pair<List<ChapterListItem>?, Int>) {
-		val (chapters, newChapters) = data
+	private fun onChaptersChanged(chapters: List<ChapterListItem>?) {
 		val infoLayout = requireViewBinding().infoLayout
 		if (chapters.isNullOrEmpty()) {
 			infoLayout.textViewChapters.isVisible = false
@@ -227,19 +207,7 @@ class DetailsFragment :
 			val count = chapters.countChaptersByBranch()
 			infoLayout.textViewChapters.isVisible = true
 			val chaptersText = resources.getQuantityString(R.plurals.chapters, count, count)
-			infoLayout.textViewChapters.text = if (newChapters == 0) {
-				chaptersText
-			} else {
-				buildSpannedString {
-					append(chaptersText)
-					append(' ')
-					color(infoLayout.textViewChapters.context.getThemeColor(materialR.attr.colorError)) {
-						append("(+")
-						append(newChapters.toString())
-						append(')')
-					}
-				}
-			}
+			infoLayout.textViewChapters.text = chaptersText
 		}
 	}
 

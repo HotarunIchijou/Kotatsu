@@ -204,6 +204,9 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 	val isUnstableUpdatesAllowed: Boolean
 		get() = prefs.getBoolean(KEY_UPDATES_UNSTABLE, false)
 
+	val defaultDetailsTab: Int
+		get() = prefs.getString(KEY_DETAILS_TAB, null)?.toIntOrNull()?.coerceIn(0, 1) ?: 0
+
 	val isContentPrefetchEnabled: Boolean
 		get() {
 			if (isBackgroundNetworkRestricted()) {
@@ -295,13 +298,13 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		get() = prefs.getBoolean(KEY_READER_SCREEN_ON, true)
 
 	var readerColorFilter: ReaderColorFilter?
-		get() {
+		get() = runCatching {
 			val brightness = prefs.getFloat(KEY_CF_BRIGHTNESS, ReaderColorFilter.EMPTY.brightness)
 			val contrast = prefs.getFloat(KEY_CF_CONTRAST, ReaderColorFilter.EMPTY.contrast)
 			val inverted = prefs.getBoolean(KEY_CF_INVERTED, ReaderColorFilter.EMPTY.isInverted)
 			val grayscale = prefs.getBoolean(KEY_CF_GRAYSCALE, ReaderColorFilter.EMPTY.isGrayscale)
-			return ReaderColorFilter(brightness, contrast, inverted, grayscale).takeUnless { it.isEmpty }
-		}
+			ReaderColorFilter(brightness, contrast, inverted, grayscale).takeUnless { it.isEmpty }
+		}.getOrNull()
 		set(value) {
 			prefs.edit {
 				val cf = value ?: ReaderColorFilter.EMPTY
@@ -559,6 +562,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_CF_INVERTED = "cf_inverted"
 		const val KEY_CF_GRAYSCALE = "cf_grayscale"
 		const val KEY_IGNORE_DOZE = "ignore_dose"
+		const val KEY_DETAILS_TAB = "details_tab"
 
 		// About
 		const val KEY_APP_UPDATE = "app_update"

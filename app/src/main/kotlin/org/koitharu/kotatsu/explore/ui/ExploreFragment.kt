@@ -160,7 +160,7 @@ class ExploreFragment :
 	override fun onRetryClick(error: Throwable) = Unit
 
 	override fun onEmptyActionClick() {
-		startActivity(SettingsActivity.newManageSourcesIntent(context ?: return))
+		startActivity(Intent(context ?: return, SourcesCatalogActivity::class.java))
 	}
 
 	private fun onOpenManga(manga: Manga) {

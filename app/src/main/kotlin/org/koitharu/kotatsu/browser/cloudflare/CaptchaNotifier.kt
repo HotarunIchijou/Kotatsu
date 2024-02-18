@@ -13,6 +13,7 @@ import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.core.exceptions.CloudFlareProtectedException
 import org.koitharu.kotatsu.core.util.ext.checkNotificationPermission
 import org.koitharu.kotatsu.parsers.model.ContentType
+import org.koitharu.kotatsu.parsers.model.MangaSource
 
 class CaptchaNotifier(
 	private val context: Context,
@@ -58,16 +59,27 @@ class CaptchaNotifier(
 		manager.notify(TAG, exception.source.hashCode(), notification)
 	}
 
+	fun dismiss(source: MangaSource) {
+		NotificationManagerCompat.from(context).cancel(TAG, source.hashCode())
+	}
+
 	override fun onError(request: ImageRequest, result: ErrorResult) {
 		super.onError(request, result)
 		val e = result.throwable
-		if (e is CloudFlareProtectedException) {
+		if (e is CloudFlareProtectedException && request.parameters.value<Boolean>(PARAM_IGNORE_CAPTCHA) != true) {
 			notify(e)
 		}
 	}
 
-	private companion object {
+	companion object {
 
+		fun ImageRequest.Builder.ignoreCaptchaErrors() = setParameter(
+			key = PARAM_IGNORE_CAPTCHA,
+			value = true,
+			memoryCacheKey = null,
+		)
+
+		private const val PARAM_IGNORE_CAPTCHA = "ignore_captcha"
 		private const val CHANNEL_ID = "captcha"
 		private const val TAG = CHANNEL_ID
 	}

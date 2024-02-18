@@ -539,4 +539,16 @@
     <string name="error_filter_locale_genre_not_supported">Esta fuente no permite filtrar por géneros ni por configuración regional</string>
     <string name="genres_search_hint">Empieza a escribir el nombre del género</string>
     <string name="disable_battery_optimization_summary_downloads">Puede que te ayude a iniciar la descarga si tienes algún problema</string>
+    <string name="welcome_text">Por favor, seleccione las fuentes de contenido que desea habilitar. Esto también se puede configurar más tarde en la configuración</string>
+    <string name="restore">Restaurar</string>
+    <string name="backup_date_">Fecha de la copia de seguridad: %s</string>
+    <string name="sync_auth">Iniciar sesión en la cuenta de sincronización</string>
+    <string name="by_name_reverse">Nombre invertido</string>
+    <string name="state_upcoming">Próximamente</string>
+    <string name="rating_safe">Seguro</string>
+    <string name="rating_suggestive">Sugestivo</string>
+    <string name="genres_exclude">Excluir los géneros</string>
+    <string name="rating_adult">Adulto</string>
+    <string name="content_rating">Clasificación del contenido</string>
+    <string name="default_tab">Pestaña por defecto</string>
 </resources>
