@@ -14,6 +14,7 @@ import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.launch
 import org.koitharu.kotatsu.R
+import org.koitharu.kotatsu.alternatives.ui.AlternativesActivity
 import org.koitharu.kotatsu.browser.BrowserActivity
 import org.koitharu.kotatsu.core.os.AppShortcutManager
 import org.koitharu.kotatsu.core.ui.list.OnListItemClickListener
@@ -23,6 +24,7 @@ import org.koitharu.kotatsu.favourites.ui.categories.select.FavoriteSheet
 import org.koitharu.kotatsu.parsers.model.MangaSource
 import org.koitharu.kotatsu.scrobbling.common.ui.selector.ScrobblingSelectorSheet
 import org.koitharu.kotatsu.search.ui.multi.MultiSearchActivity
+import org.koitharu.kotatsu.stats.ui.sheet.MangaStatsSheet
 
 class DetailsMenuProvider(
 	private val activity: FragmentActivity,
@@ -40,9 +42,11 @@ class DetailsMenuProvider(
 		menu.findItem(R.id.action_save).isVisible = manga?.source != null && manga.source != MangaSource.LOCAL
 		menu.findItem(R.id.action_delete).isVisible = manga?.source == MangaSource.LOCAL
 		menu.findItem(R.id.action_browser).isVisible = manga?.source != MangaSource.LOCAL
+		menu.findItem(R.id.action_alternatives).isVisible = manga?.source != MangaSource.LOCAL
 		menu.findItem(R.id.action_shortcut).isVisible = ShortcutManagerCompat.isRequestPinShortcutSupported(activity)
 		menu.findItem(R.id.action_scrobbling).isVisible = viewModel.isScrobblingAvailable
 		menu.findItem(R.id.action_online).isVisible = viewModel.remoteManga.value != null
+		menu.findItem(R.id.action_stats).isVisible = viewModel.isStatsAvailable.value
 		menu.findItem(R.id.action_favourite).setIcon(
 			if (viewModel.favouriteCategories.value) R.drawable.ic_heart else R.drawable.ic_heart_outline,
 		)
@@ -98,6 +102,18 @@ class DetailsMenuProvider(
 			R.id.action_related -> {
 				viewModel.manga.value?.let {
 					activity.startActivity(MultiSearchActivity.newIntent(activity, it.title))
+				}
+			}
+
+			R.id.action_alternatives -> {
+				viewModel.manga.value?.let {
+					activity.startActivity(AlternativesActivity.newIntent(activity, it))
+				}
+			}
+
+			R.id.action_stats -> {
+				viewModel.manga.value?.let {
+					MangaStatsSheet.show(activity.supportFragmentManager, it)
 				}
 			}
 

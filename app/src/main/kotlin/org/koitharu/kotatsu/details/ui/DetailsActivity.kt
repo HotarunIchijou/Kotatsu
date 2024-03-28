@@ -36,7 +36,6 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.FlowCollector
 import kotlinx.coroutines.flow.filterNotNull
 import org.koitharu.kotatsu.R
-import org.koitharu.kotatsu.core.exceptions.resolve.SnackbarErrorObserver
 import org.koitharu.kotatsu.core.model.parcelable.ParcelableManga
 import org.koitharu.kotatsu.core.os.AppShortcutManager
 import org.koitharu.kotatsu.core.parser.MangaIntent
@@ -125,20 +124,11 @@ class DetailsActivity :
 		viewModel.manga.filterNotNull().observe(this, ::onMangaUpdated)
 		viewModel.onMangaRemoved.observeEvent(this, ::onMangaRemoved)
 		viewModel.newChaptersCount.observe(this, ::onNewChaptersChanged)
-		viewModel.onError.observeEvent(
+		viewModel.onError.observeEvent(this, DetailsErrorObserver(this, viewModel, exceptionResolver))
+		viewModel.onActionDone.observeEvent(
 			this,
-			SnackbarErrorObserver(
-				host = viewBinding.containerDetails,
-				fragment = null,
-				resolver = exceptionResolver,
-				onResolved = { isResolved ->
-					if (isResolved) {
-						viewModel.reload()
-					}
-				},
-			),
+			ReversibleActionObserver(viewBinding.containerDetails, viewBinding.layoutBottom),
 		)
-		viewModel.onActionDone.observeEvent(this, ReversibleActionObserver(viewBinding.containerDetails, viewBinding.layoutBottom))
 		viewModel.onShowTip.observeEvent(this) { showTip() }
 		viewModel.historyInfo.observe(this, ::onHistoryChanged)
 		viewModel.selectedBranch.observe(this) {
@@ -150,6 +140,7 @@ class DetailsActivity :
 		viewModel.isChaptersEmpty.observe(this, chaptersMenuInvalidator)
 		val menuInvalidator = MenuInvalidator(this)
 		viewModel.favouriteCategories.observe(this, menuInvalidator)
+		viewModel.isStatsAvailable.observe(this, menuInvalidator)
 		viewModel.remoteManga.observe(this, menuInvalidator)
 		viewModel.branches.observe(this) {
 			viewBinding.buttonDropdown.isVisible = it.size > 1
@@ -385,12 +376,13 @@ class DetailsActivity :
 	}
 
 	private fun initPager() {
-		val adapter = DetailsPagerAdapter(this)
+		val adapter = DetailsPagerAdapter(this, settings)
 		viewBinding.pager.recyclerView?.isNestedScrollingEnabled = false
 		viewBinding.pager.offscreenPageLimit = 1
 		viewBinding.pager.adapter = adapter
 		TabLayoutMediator(viewBinding.tabs, viewBinding.pager, adapter).attach()
 		viewBinding.pager.setCurrentItem(settings.defaultDetailsTab, false)
+		viewBinding.tabs.isVisible = adapter.itemCount > 1
 	}
 
 	private fun showBottomSheet(isVisible: Boolean) {

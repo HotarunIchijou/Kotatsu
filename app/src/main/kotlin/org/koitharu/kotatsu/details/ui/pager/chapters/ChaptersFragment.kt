@@ -11,6 +11,8 @@ import androidx.core.graphics.Insets
 import androidx.core.view.isVisible
 import androidx.fragment.app.activityViewModels
 import androidx.lifecycle.Lifecycle
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.flowOn
@@ -62,12 +64,22 @@ class ChaptersFragment :
 			registryOwner = this,
 			callback = this,
 		)
+		viewModel.isChaptersInGridView.observe(viewLifecycleOwner) { chaptersInGridView ->
+			binding.recyclerViewChapters.layoutManager = if (chaptersInGridView) {
+				GridLayoutManager(context, ChapterGridSpanHelper.getSpanCount(binding.recyclerViewChapters)).apply {
+					spanSizeLookup = ChapterGridSpanHelper.SpanSizeLookup(binding.recyclerViewChapters)
+				}
+			} else {
+				LinearLayoutManager(context)
+			}
+		}
 		with(binding.recyclerViewChapters) {
 			addItemDecoration(TypedListSpacingDecoration(context, true))
 			checkNotNull(selectionController).attachToRecyclerView(this)
 			setHasFixedSize(true)
 			isNestedScrollingEnabled = false
 			adapter = chaptersAdapter
+			ChapterGridSpanHelper.attach(this)
 		}
 		viewModel.isLoading.observe(viewLifecycleOwner, this::onLoadingStateChanged)
 		viewModel.chapters

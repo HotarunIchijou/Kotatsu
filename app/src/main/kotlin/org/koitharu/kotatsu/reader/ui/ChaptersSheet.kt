@@ -6,6 +6,8 @@ import android.view.View
 import android.view.ViewGroup
 import androidx.fragment.app.FragmentManager
 import androidx.fragment.app.activityViewModels
+import androidx.recyclerview.widget.GridLayoutManager
+import androidx.recyclerview.widget.LinearLayoutManager
 import dagger.hilt.android.AndroidEntryPoint
 import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.core.model.MangaHistory
@@ -19,6 +21,7 @@ import org.koitharu.kotatsu.databinding.SheetChaptersBinding
 import org.koitharu.kotatsu.details.ui.adapter.ChaptersAdapter
 import org.koitharu.kotatsu.details.ui.mapChapters
 import org.koitharu.kotatsu.details.ui.model.ChapterListItem
+import org.koitharu.kotatsu.details.ui.pager.chapters.ChapterGridSpanHelper
 import org.koitharu.kotatsu.details.ui.withVolumeHeaders
 import org.koitharu.kotatsu.history.data.PROGRESS_NONE
 import org.koitharu.kotatsu.list.ui.adapter.TypedListSpacingDecoration
@@ -64,6 +67,7 @@ class ChaptersSheet : BaseAdaptiveSheet<SheetChaptersBinding>(),
 			newCount = 0,
 			branch = currentChapter?.branch,
 			bookmarks = listOf(),
+			isGrid = settings.isChaptersGridView,
 		).withVolumeHeaders(binding.root.context)
 		if (chapters.isEmpty()) {
 			dismissAllowingStateLoss()
@@ -86,6 +90,14 @@ class ChaptersSheet : BaseAdaptiveSheet<SheetChaptersBinding>(),
 			} else {
 				adapter.items = chapters
 			}
+		}
+		ChapterGridSpanHelper.attach(binding.recyclerView)
+		binding.recyclerView.layoutManager = if (settings.isChaptersGridView) {
+			GridLayoutManager(context, ChapterGridSpanHelper.getSpanCount(binding.recyclerView)).apply {
+				spanSizeLookup = ChapterGridSpanHelper.SpanSizeLookup(binding.recyclerView)
+			}
+		} else {
+			LinearLayoutManager(context)
 		}
 	}
 

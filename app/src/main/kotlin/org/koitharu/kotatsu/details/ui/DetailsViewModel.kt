@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.mapLatest
+import kotlinx.coroutines.flow.onStart
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.plus
@@ -35,6 +36,7 @@ import org.koitharu.kotatsu.core.ui.BaseViewModel
 import org.koitharu.kotatsu.core.ui.util.ReversibleAction
 import org.koitharu.kotatsu.core.util.ext.MutableEventFlow
 import org.koitharu.kotatsu.core.util.ext.call
+import org.koitharu.kotatsu.core.util.ext.combine
 import org.koitharu.kotatsu.core.util.ext.computeSize
 import org.koitharu.kotatsu.core.util.ext.onEachWhile
 import org.koitharu.kotatsu.core.util.ext.requireValue
@@ -61,6 +63,7 @@ import org.koitharu.kotatsu.parsers.util.runCatchingCancellable
 import org.koitharu.kotatsu.scrobbling.common.domain.Scrobbler
 import org.koitharu.kotatsu.scrobbling.common.domain.model.ScrobblingInfo
 import org.koitharu.kotatsu.scrobbling.common.domain.model.ScrobblingStatus
+import org.koitharu.kotatsu.stats.data.StatsRepository
 import javax.inject.Inject
 
 @HiltViewModel
@@ -79,6 +82,7 @@ class DetailsViewModel @Inject constructor(
 	private val detailsLoadUseCase: DetailsLoadUseCase,
 	private val progressUpdateUseCase: ProgressUpdateUseCase,
 	private val readingTimeUseCase: ReadingTimeUseCase,
+	private val statsRepository: StatsRepository,
 ) : BaseViewModel() {
 
 	private val intent = MangaIntent(savedStateHandle)
@@ -100,6 +104,9 @@ class DetailsViewModel @Inject constructor(
 	val favouriteCategories = interactor.observeIsFavourite(mangaId)
 		.stateIn(viewModelScope + Dispatchers.Default, SharingStarted.Eagerly, false)
 
+	val isStatsAvailable = statsRepository.observeHasStats(mangaId)
+		.stateIn(viewModelScope + Dispatchers.Default, SharingStarted.Eagerly, false)
+
 	val remoteManga = MutableStateFlow<Manga?>(null)
 
 	val newChaptersCount = details.flatMapLatest { d ->
@@ -116,7 +123,13 @@ class DetailsViewModel @Inject constructor(
 	val isChaptersReversed = settings.observeAsStateFlow(
 		scope = viewModelScope + Dispatchers.Default,
 		key = AppSettings.KEY_REVERSE_CHAPTERS,
-		valueProducer = { chaptersReverse },
+		valueProducer = { isChaptersReverse },
+	)
+
+	val isChaptersInGridView = settings.observeAsStateFlow(
+		scope = viewModelScope + Dispatchers.Default,
+		key = AppSettings.KEY_GRID_VIEW_CHAPTERS,
+		valueProducer = { isChaptersGridView },
 	)
 
 	val historyInfo: StateFlow<HistoryInfo> = combine(
@@ -139,6 +152,7 @@ class DetailsViewModel @Inject constructor(
 	val localSize = details
 		.map { it?.local }
 		.distinctUntilChanged()
+		.combine(localStorageChanges.onStart { emit(null) }) { x, _ -> x }
 		.map { local ->
 			if (local != null) {
 				runCatchingCancellable {
@@ -200,12 +214,14 @@ class DetailsViewModel @Inject constructor(
 			selectedBranch,
 			newChaptersCount,
 			bookmarks,
-		) { manga, history, branch, news, bookmarks ->
+			isChaptersInGridView,
+		) { manga, history, branch, news, bookmarks, grid ->
 			manga?.mapChapters(
 				history,
 				news,
 				branch,
 				bookmarks,
+				grid,
 			).orEmpty()
 		},
 		isChaptersReversed,
@@ -275,7 +291,11 @@ class DetailsViewModel @Inject constructor(
 	}
 
 	fun setChaptersReversed(newValue: Boolean) {
-		settings.chaptersReverse = newValue
+		settings.isChaptersReverse = newValue
+	}
+
+	fun setChaptersInGridView(newValue: Boolean) {
+		settings.isChaptersGridView = newValue
 	}
 
 	fun setSelectedBranch(branch: String?) {

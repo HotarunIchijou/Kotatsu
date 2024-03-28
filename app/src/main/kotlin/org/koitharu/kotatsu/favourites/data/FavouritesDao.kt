@@ -118,6 +118,9 @@ abstract class FavouritesDao {
 	@Query("SELECT * FROM favourites WHERE manga_id = :id AND deleted_at = 0 GROUP BY manga_id")
 	abstract suspend fun find(id: Long): FavouriteManga?
 
+	@Query("SELECT * FROM favourites WHERE manga_id = :mangaId AND deleted_at = 0")
+	abstract suspend fun findAllRaw(mangaId: Long): List<FavouriteEntity>
+
 	@Transaction
 	@Deprecated("Ignores order")
 	@Query("SELECT * FROM favourites WHERE manga_id = :id AND deleted_at = 0 GROUP BY manga_id")
@@ -190,11 +193,14 @@ abstract class FavouritesDao {
 	private fun getOrderBy(sortOrder: ListSortOrder) = when (sortOrder) {
 		ListSortOrder.RATING -> "manga.rating DESC"
 		ListSortOrder.NEWEST -> "favourites.created_at DESC"
+		ListSortOrder.OLDEST -> "favourites.created_at ASC"
 		ListSortOrder.ALPHABETIC -> "manga.title ASC"
 		ListSortOrder.ALPHABETIC_REVERSE -> "manga.title DESC"
 		ListSortOrder.NEW_CHAPTERS -> "IFNULL((SELECT chapters_new FROM tracks WHERE tracks.manga_id = manga.manga_id), 0) DESC"
 		ListSortOrder.PROGRESS -> "IFNULL((SELECT percent FROM history WHERE history.manga_id = manga.manga_id), 0) DESC"
+		ListSortOrder.UNREAD -> "IFNULL((SELECT percent FROM history WHERE history.manga_id = manga.manga_id), 0) ASC"
 		ListSortOrder.LAST_READ -> "IFNULL((SELECT updated_at FROM history WHERE history.manga_id = manga.manga_id), 0) DESC"
+		ListSortOrder.LONG_AGO_READ -> "IFNULL((SELECT updated_at FROM history WHERE history.manga_id = manga.manga_id), 0) ASC"
 
 		else -> throw IllegalArgumentException("Sort order $sortOrder is not supported")
 	}

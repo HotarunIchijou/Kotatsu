@@ -10,12 +10,13 @@ import org.koitharu.kotatsu.list.ui.adapter.listHeaderAD
 import org.koitharu.kotatsu.list.ui.model.ListModel
 
 class ChaptersAdapter(
-	onItemClickListener: OnListItemClickListener<ChapterListItem>,
+	private val onItemClickListener: OnListItemClickListener<ChapterListItem>,
 ) : BaseListAdapter<ListModel>(), FastScroller.SectionIndexer {
 
 	init {
-		addDelegate(ListItemType.CHAPTER, chapterListItemAD(onItemClickListener))
 		addDelegate(ListItemType.HEADER, listHeaderAD(null))
+		addDelegate(ListItemType.CHAPTER_LIST, chapterListItemAD(onItemClickListener))
+		addDelegate(ListItemType.CHAPTER_GRID, chapterGridItemAD(onItemClickListener))
 	}
 
 	override fun getSectionText(context: Context, position: Int): CharSequence? {

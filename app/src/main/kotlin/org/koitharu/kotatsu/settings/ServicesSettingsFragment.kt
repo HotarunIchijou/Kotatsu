@@ -1,7 +1,6 @@
 package org.koitharu.kotatsu.settings
 
 import android.accounts.AccountManager
-import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.content.SharedPreferences
 import android.net.Uri
@@ -17,6 +16,7 @@ import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.core.prefs.AppSettings
 import org.koitharu.kotatsu.core.ui.BasePreferenceFragment
 import org.koitharu.kotatsu.core.util.ext.getDisplayMessage
+import org.koitharu.kotatsu.core.util.ext.printStackTraceDebug
 import org.koitharu.kotatsu.core.util.ext.viewLifecycleScope
 import org.koitharu.kotatsu.scrobbling.anilist.data.AniListRepository
 import org.koitharu.kotatsu.scrobbling.common.data.ScrobblerRepository
@@ -29,6 +29,8 @@ import org.koitharu.kotatsu.sync.domain.SyncController
 import org.koitharu.kotatsu.sync.ui.SyncSettingsIntent
 import org.koitharu.kotatsu.core.util.ext.printStackTraceDebug
 import org.koitharu.kotatsu.scrobbling.kitsu.ui.KitsuAuthActivity
+import org.koitharu.kotatsu.settings.utils.SplitSwitchPreference
+import org.koitharu.kotatsu.stats.ui.StatsActivity
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -52,11 +54,18 @@ class ServicesSettingsFragment : BasePreferenceFragment(R.string.services),
 
 	override fun onCreatePreferences(savedInstanceState: Bundle?, rootKey: String?) {
 		addPreferencesFromResource(R.xml.pref_services)
-		bindSuggestionsSummary()
+		findPreference<SplitSwitchPreference>(AppSettings.KEY_STATS_ENABLED)?.let {
+			it.onContainerClickListener = Preference.OnPreferenceClickListener {
+				it.context.startActivity(Intent(it.context, StatsActivity::class.java))
+				true
+			}
+		}
 	}
 
 	override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
 		super.onViewCreated(view, savedInstanceState)
+		bindSuggestionsSummary()
+		bindStatsSummary()
 		settings.subscribe(this)
 	}
 
@@ -77,6 +86,7 @@ class ServicesSettingsFragment : BasePreferenceFragment(R.string.services),
 	override fun onSharedPreferenceChanged(prefs: SharedPreferences?, key: String?) {
 		when (key) {
 			AppSettings.KEY_SUGGESTIONS -> bindSuggestionsSummary()
+			AppSettings.KEY_STATS_ENABLED -> bindStatsSummary()
 		}
 	}
 
@@ -193,6 +203,12 @@ class ServicesSettingsFragment : BasePreferenceFragment(R.string.services),
 	private fun bindSuggestionsSummary() {
 		findPreference<Preference>(AppSettings.KEY_SUGGESTIONS)?.setSummary(
 			if (settings.isSuggestionsEnabled) R.string.enabled else R.string.disabled,
+		)
+	}
+
+	private fun bindStatsSummary() {
+		findPreference<Preference>(AppSettings.KEY_STATS_ENABLED)?.setSummary(
+			if (settings.isStatsEnabled) R.string.enabled else R.string.disabled,
 		)
 	}
 }

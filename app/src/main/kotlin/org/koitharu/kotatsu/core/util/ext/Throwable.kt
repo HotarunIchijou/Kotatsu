@@ -17,6 +17,7 @@ import org.koitharu.kotatsu.core.exceptions.EmptyHistoryException
 import org.koitharu.kotatsu.core.exceptions.SyncApiException
 import org.koitharu.kotatsu.core.exceptions.TooManyRequestExceptions
 import org.koitharu.kotatsu.core.exceptions.UnsupportedFileException
+import org.koitharu.kotatsu.core.exceptions.UnsupportedSourceException
 import org.koitharu.kotatsu.core.exceptions.WrongPasswordException
 import org.koitharu.kotatsu.parsers.ErrorMessages.FILTER_BOTH_LOCALE_GENRES_NOT_SUPPORTED
 import org.koitharu.kotatsu.parsers.ErrorMessages.FILTER_BOTH_STATES_GENRES_NOT_SUPPORTED
@@ -56,6 +57,7 @@ fun Throwable.getDisplayMessage(resources: Resources): String = when (this) {
 
 	is WrongPasswordException -> resources.getString(R.string.wrong_password)
 	is NotFoundException -> resources.getString(R.string.not_found_404)
+	is UnsupportedSourceException -> resources.getString(R.string.unsupported_source)
 
 	is HttpException -> getHttpDisplayMessage(response.code, resources)
 	is HttpStatusException -> getHttpDisplayMessage(statusCode, resources)
@@ -98,14 +100,16 @@ fun Throwable.isReportable(): Boolean {
 	return this is Error || this.javaClass in reportableExceptions
 }
 
+fun Throwable.isNetworkError(): Boolean {
+	return this is UnknownHostException || this is SocketTimeoutException
+}
+
 fun Throwable.report() {
 	val exception = CaughtException(this, "${javaClass.simpleName}($message)")
 	exception.sendWithAcra()
 }
 
 private val reportableExceptions = arraySetOf<Class<*>>(
-	ParseException::class.java,
-	JSONException::class.java,
 	RuntimeException::class.java,
 	IllegalStateException::class.java,
 	IllegalArgumentException::class.java,
