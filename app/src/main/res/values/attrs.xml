@@ -8,11 +8,8 @@
 	<attr name="listItemTextViewStyle" />
 	<attr name="fastScrollerStyle" />
 	<attr name="tipViewStyle" />
-	<attr name="m3ColorBackground" />
-	<attr name="m3ColorExploreButton" />
-	<attr name="m3ColorCardBackground" />
-	<attr name="m3ColorBottomMenuBackground" />
-	<attr name="m3SpinnerStyle" />
+	<attr name="progressButtonStyle" />
+	<attr name="dotIndicatorStyle" />
 
 	<!--CoverImageView attrs-->
 	<declare-styleable name="CoverImageView">
@@ -145,6 +142,34 @@
 	<declare-styleable name="ReaderInfoBarView">
 		<attr name="android:textSize" />
 		<attr name="android:strokeWidth" />
+	</declare-styleable>
+
+	<declare-styleable name="ProgressButton">
+		<attr name="titleTextAppearance" />
+		<attr name="subtitleTextAppearance" />
+		<attr name="title" />
+		<attr name="subtitle" />
+		<attr name="android:textColor" />
+		<attr name="android:max" />
+		<attr name="android:progress" />
+		<attr name="baseColor" format="color" />
+		<attr name="progressColor" format="color" />
+	</declare-styleable>
+
+	<declare-styleable name="NonFilteringAutoCompleteTextView">
+		<attr name="readOnly" format="boolean" />
+	</declare-styleable>
+
+	<declare-styleable name="DotsIndicator">
+		<attr name="dotSize" format="dimension">
+			<enum name="fit" value="-1" />
+		</attr>
+		<attr name="dotScale" format="float" />
+		<attr name="dotAlpha" format="float" />
+		<attr name="dotColor" format="color" />
+		<attr name="dotSpacing" format="dimension" />
+		<attr name="android:max" />
+		<attr name="android:progress" />
 	</declare-styleable>
 
 </resources>

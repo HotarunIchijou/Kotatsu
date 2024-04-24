@@ -14,7 +14,7 @@ import android.content.ContextWrapper
 import android.content.OperationApplicationException
 import android.content.SharedPreferences
 import android.content.SyncResult
-import android.content.pm.PackageManager
+import android.content.pm.PackageManager.PERMISSION_GRANTED
 import android.content.pm.ResolveInfo
 import android.database.SQLException
 import android.graphics.Bitmap
@@ -31,10 +31,15 @@ import android.webkit.WebView
 import androidx.activity.result.ActivityResultLauncher
 import androidx.annotation.IntegerRes
 import androidx.annotation.WorkerThread
+import androidx.appcompat.app.AppCompatActivity
+import androidx.appcompat.app.AppCompatDelegate
+import androidx.appcompat.app.AppCompatDialog
 import androidx.core.app.ActivityOptionsCompat
 import androidx.core.app.NotificationManagerCompat
 import androidx.core.content.ContextCompat
 import androidx.core.os.LocaleListCompat
+import androidx.fragment.app.DialogFragment
+import androidx.fragment.app.Fragment
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.coroutineScope
 import androidx.work.CoroutineWorker
@@ -60,6 +65,7 @@ import org.xmlpull.v1.XmlPullParser
 import org.xmlpull.v1.XmlPullParserException
 import java.io.File
 import kotlin.math.roundToLong
+import com.google.android.material.R as materialR
 
 val Context.activityManager: ActivityManager?
 	get() = getSystemService(ACTIVITY_SERVICE) as? ActivityManager
@@ -136,7 +142,7 @@ fun Window.setNavigationBarTransparentCompat(context: Context, elevation: Float,
 	} else {
 		// Set navbar scrim 70% of navigationBarColor
 		ElevationOverlayProvider(context).compositeOverlayIfNeeded(
-			context.getThemeColor(R.attr.m3ColorBottomMenuBackground, alphaFactor),
+			context.getThemeColor(materialR.attr.colorSurfaceContainer, alphaFactor),
 			elevation,
 		)
 	}
@@ -216,10 +222,26 @@ fun Context.findActivity(): Activity? = when (this) {
 	else -> null
 }
 
-fun Context.checkNotificationPermission(): Boolean = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-	ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
-} else {
-	NotificationManagerCompat.from(this).areNotificationsEnabled()
+fun Fragment.findAppCompatDelegate(): AppCompatDelegate? {
+	((this as? DialogFragment)?.dialog as? AppCompatDialog)?.run {
+		return delegate
+	}
+	return parentFragment?.findAppCompatDelegate() ?: (activity as? AppCompatActivity)?.delegate
+}
+
+fun Context.checkNotificationPermission(channelId: String?): Boolean {
+	val hasPermission = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+		ContextCompat.checkSelfPermission(this, Manifest.permission.POST_NOTIFICATIONS) == PERMISSION_GRANTED
+	} else {
+		NotificationManagerCompat.from(this).areNotificationsEnabled()
+	}
+	if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O && hasPermission && channelId != null) {
+		val channel = NotificationManagerCompat.from(this).getNotificationChannel(channelId)
+		if (channel != null && channel.importance == NotificationManagerCompat.IMPORTANCE_NONE) {
+			return false
+		}
+	}
+	return hasPermission
 }
 
 @WorkerThread

@@ -11,8 +11,6 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.filterNot
-import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.flowOf
@@ -101,8 +99,8 @@ class DetailsViewModel @Inject constructor(
 	val history = historyRepository.observeOne(mangaId)
 		.stateIn(viewModelScope + Dispatchers.Default, SharingStarted.Eagerly, null)
 
-	val favouriteCategories = interactor.observeIsFavourite(mangaId)
-		.stateIn(viewModelScope + Dispatchers.Default, SharingStarted.Eagerly, false)
+	val favouriteCategories = interactor.observeFavourite(mangaId)
+		.stateIn(viewModelScope + Dispatchers.Default, SharingStarted.Eagerly, emptySet())
 
 	val isStatsAvailable = statsRepository.observeHasStats(mangaId)
 		.stateIn(viewModelScope + Dispatchers.Default, SharingStarted.Eagerly, false)
@@ -248,12 +246,6 @@ class DetailsViewModel @Inject constructor(
 				.collect { onDownloadComplete(it) }
 		}
 		launchJob(Dispatchers.Default) {
-			if (settings.isTipEnabled(DetailsActivity.TIP_BUTTON)) {
-				manga.filterNot { it?.chapters.isNullOrEmpty() }.first()
-				onShowTip.call(Unit)
-			}
-		}
-		launchJob(Dispatchers.Default) {
 			val manga = details.firstOrNull { !it?.chapters.isNullOrEmpty() } ?: return@launchJob
 			val h = history.firstOrNull()
 			if (h != null) {
@@ -361,10 +353,6 @@ class DetailsViewModel @Inject constructor(
 			it.isUnread && !it.isDownloaded
 		} ?: chapters.firstOrNull() ?: return
 		onSelectChapter.call(chapter.chapter.id)
-	}
-
-	fun onButtonTipClosed() {
-		settings.closeTip(DetailsActivity.TIP_BUTTON)
 	}
 
 	fun removeFromHistory() {

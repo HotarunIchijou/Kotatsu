@@ -34,6 +34,12 @@ class SuggestionRepository @Inject constructor(
 		}
 	}
 
+	suspend fun getRandomList(limit: Int): List<Manga> {
+		return db.getSuggestionDao().getRandom(limit).map {
+			it.manga.toManga(it.tags.toMangaTags())
+		}
+	}
+
 	suspend fun clear() {
 		db.getSuggestionDao().deleteAll()
 	}

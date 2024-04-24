@@ -61,19 +61,17 @@ import org.koitharu.kotatsu.reader.ui.config.ReaderConfigSheet
 import org.koitharu.kotatsu.reader.ui.pager.ReaderPage
 import org.koitharu.kotatsu.reader.ui.pager.ReaderUiState
 import org.koitharu.kotatsu.reader.ui.tapgrid.TapGridDispatcher
-import org.koitharu.kotatsu.reader.ui.thumbnails.OnPageSelectListener
 import java.util.concurrent.TimeUnit
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class ReaderActivity :
 	BaseFullscreenActivity<ActivityReaderBinding>(),
-	ChaptersSheet.OnChapterChangeListener,
 	TapGridDispatcher.OnGridTouchListener,
-	OnPageSelectListener,
 	ReaderConfigSheet.Callback,
 	ReaderControlDelegate.OnInteractionListener,
 	OnApplyWindowInsetsListener,
+	ReaderNavigationCallback,
 	IdlingDetector.Callback,
 	ActivityResultCallback<Uri?>,
 	ZoomControl.ZoomControlListener {
@@ -118,7 +116,7 @@ class ReaderActivity :
 		controlDelegate = ReaderControlDelegate(resources, settings, tapGridSettings, this)
 		viewBinding.slider.setLabelFormatter(PageLabelFormatter())
 		viewBinding.zoomControl.listener = this
-		ReaderSliderListener(this, viewModel).attachToSlider(viewBinding.slider)
+		ReaderSliderListener(viewModel, this).attachToSlider(viewBinding.slider)
 		insetsDelegate.interceptingWindowInsetsListener = this
 		idlingDetector.bindToLifecycle(this)
 
@@ -144,11 +142,10 @@ class ReaderActivity :
 		viewModel.content.observe(this) {
 			onLoadingStateChanged(viewModel.isLoading.value)
 		}
-		viewModel.incognitoMode.observe(this, MenuInvalidator(this))
 		viewModel.isScreenshotsBlockEnabled.observe(this, this::setWindowSecure)
 		viewModel.isKeepScreenOnEnabled.observe(this, this::setKeepScreenOn)
 		viewModel.isInfoBarEnabled.observe(this, ::onReaderBarChanged)
-		viewModel.isBookmarkAdded.observe(this, MenuInvalidator(viewBinding.toolbarBottom))
+		viewModel.isBookmarkAdded.observe(this, MenuInvalidator(this))
 		viewModel.onShowToast.observeEvent(this) { msgId ->
 			Snackbar.make(viewBinding.container, msgId, Snackbar.LENGTH_SHORT)
 				.setAnchorView(viewBinding.appbarBottom)
@@ -257,11 +254,12 @@ class ReaderActivity :
 		return controlDelegate.onKeyUp(keyCode, event) || super.onKeyUp(keyCode, event)
 	}
 
-	override fun onChapterChanged(chapter: MangaChapter) {
+	override fun onChapterSelected(chapter: MangaChapter): Boolean {
 		viewModel.switchChapter(chapter.id, 0)
+		return true
 	}
 
-	override fun onPageSelected(page: ReaderPage) {
+	override fun onPageSelected(page: ReaderPage): Boolean {
 		lifecycleScope.launch(Dispatchers.Default) {
 			val pages = viewModel.content.value.pages
 			val index = pages.indexOfFirst { it.chapterId == page.chapterId && it.id == page.id }
@@ -273,6 +271,7 @@ class ReaderActivity :
 				viewModel.switchChapter(page.chapterId, page.index)
 			}
 		}
+		return true
 	}
 
 	override fun onReaderModeChanged(mode: ReaderMode) {
@@ -394,14 +393,17 @@ class ReaderActivity :
 
 	private fun onUiStateChanged(pair: Pair<ReaderUiState?, ReaderUiState?>) {
 		val (previous: ReaderUiState?, uiState: ReaderUiState?) = pair
-		title = uiState?.resolveTitle(this) ?: getString(R.string.loading_)
+		title = uiState?.mangaName ?: getString(R.string.loading_)
 		viewBinding.infoBar.update(uiState)
 		if (uiState == null) {
 			supportActionBar?.subtitle = null
 			viewBinding.slider.isVisible = false
 			return
 		}
-		supportActionBar?.subtitle = uiState.chapterName
+		supportActionBar?.subtitle = when {
+			uiState.incognito -> getString(R.string.incognito_mode)
+			else -> uiState.chapterName
+		}
 		if (previous?.chapterName != null && uiState.chapterName != previous.chapterName) {
 			if (!uiState.chapterName.isNullOrEmpty()) {
 				viewBinding.toastView.showTemporary(uiState.chapterName, TOAST_DURATION)

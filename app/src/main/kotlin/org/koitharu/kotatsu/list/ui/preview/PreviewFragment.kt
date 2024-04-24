@@ -20,6 +20,7 @@ import org.koitharu.kotatsu.core.ui.BaseFragment
 import org.koitharu.kotatsu.core.ui.image.CoverSizeResolver
 import org.koitharu.kotatsu.core.ui.widgets.ChipsView
 import org.koitharu.kotatsu.core.util.ext.crossfade
+import org.koitharu.kotatsu.core.util.ext.defaultPlaceholders
 import org.koitharu.kotatsu.core.util.ext.enqueueWith
 import org.koitharu.kotatsu.core.util.ext.ifNullOrEmpty
 import org.koitharu.kotatsu.core.util.ext.observe
@@ -131,38 +132,21 @@ class PreviewFragment : BaseFragment<FragmentPreviewBinding>(), View.OnClickList
 
 	private fun onFooterUpdated(footer: PreviewViewModel.FooterInfo?) {
 		with(requireViewBinding()) {
-			toolbarBottom.isVisible = footer != null
-			if (footer == null) {
-				return
-			}
-			toolbarBottom.title = when {
-				footer.isInProgress() -> {
-					getString(R.string.chapter_d_of_d, footer.currentChapter, footer.totalChapters)
-				}
+			buttonRead.isEnabled = footer != null
+			buttonRead.setTitle(if (footer?.isInProgress() == true) R.string._continue else R.string.read)
+			buttonRead.subtitle = when {
+				footer == null -> getString(R.string.loading_)
+				footer.isIncognito -> getString(R.string.incognito_mode)
+				footer.currentChapter >= 0 -> getString(
+					R.string.chapter_d_of_d,
+					footer.currentChapter + 1,
+					footer.totalChapters,
+				)
 
-				footer.totalChapters > 0 -> {
-					resources.getQuantityString(R.plurals.chapters, footer.totalChapters, footer.totalChapters)
-				}
-
-				else -> {
-					getString(R.string.no_chapters)
-				}
+				footer.totalChapters == 0 -> getString(R.string.no_chapters)
+				else -> resources.getQuantityString(R.plurals.chapters, footer.totalChapters, footer.totalChapters)
 			}
-			buttonRead.isEnabled = footer.totalChapters > 0
-			buttonRead.setIconResource(
-				when {
-					footer.isIncognito -> R.drawable.ic_incognito
-					footer.isInProgress() -> R.drawable.ic_play
-					else -> R.drawable.ic_read
-				},
-			)
-			buttonRead.setText(
-				if (footer.isInProgress()) {
-					R.string._continue
-				} else {
-					R.string.read
-				},
-			)
+			buttonRead.setProgress(footer?.percent?.coerceIn(0f, 1f) ?: 0f, true)
 		}
 	}
 
@@ -195,9 +179,7 @@ class PreviewFragment : BaseFragment<FragmentPreviewBinding>(), View.OnClickList
 				.placeholder(previousDrawable)
 				.error(previousDrawable)
 		} else {
-			request.fallback(R.drawable.ic_placeholder)
-				.placeholder(R.drawable.ic_placeholder)
-				.error(R.drawable.ic_error_placeholder)
+			request.defaultPlaceholders(requireContext())
 		}
 		request.enqueueWith(coil)
 	}

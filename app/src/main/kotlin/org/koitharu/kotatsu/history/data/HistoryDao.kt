@@ -44,6 +44,7 @@ abstract class HistoryDao {
 			ListSortOrder.ALPHABETIC -> "manga.title"
 			ListSortOrder.ALPHABETIC_REVERSE -> "manga.title DESC"
 			ListSortOrder.NEW_CHAPTERS -> "IFNULL((SELECT chapters_new FROM tracks WHERE tracks.manga_id = manga.manga_id), 0) DESC"
+			ListSortOrder.UPDATED -> "IFNULL((SELECT last_chapter_date FROM tracks WHERE tracks.manga_id = manga.manga_id), 0) DESC"
 			else -> throw IllegalArgumentException("Sort order $order is not supported")
 		}
 
@@ -57,6 +58,9 @@ abstract class HistoryDao {
 
 	@Query("SELECT * FROM manga WHERE manga_id IN (SELECT manga_id FROM history WHERE deleted_at = 0)")
 	abstract suspend fun findAllManga(): List<MangaEntity>
+
+	@Query("SELECT manga_id FROM history WHERE deleted_at = 0")
+	abstract suspend fun findAllIds(): LongArray
 
 	@Query(
 		"""SELECT tags.* FROM tags
@@ -77,6 +81,9 @@ abstract class HistoryDao {
 
 	@Query("SELECT COUNT(*) FROM history WHERE deleted_at = 0")
 	abstract fun observeCount(): Flow<Int>
+
+	@Query("SELECT COUNT(*) FROM history WHERE deleted_at = 0")
+	abstract suspend fun getCount(): Int
 
 	@Query("SELECT percent FROM history WHERE manga_id = :id AND deleted_at = 0")
 	abstract suspend fun findProgress(id: Long): Float?

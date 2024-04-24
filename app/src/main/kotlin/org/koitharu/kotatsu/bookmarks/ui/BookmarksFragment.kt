@@ -25,11 +25,12 @@ import org.koitharu.kotatsu.core.ui.list.ListSelectionController
 import org.koitharu.kotatsu.core.ui.list.OnListItemClickListener
 import org.koitharu.kotatsu.core.ui.list.fastscroll.FastScroller
 import org.koitharu.kotatsu.core.ui.util.ReversibleActionObserver
+import org.koitharu.kotatsu.core.util.ext.findAppCompatDelegate
 import org.koitharu.kotatsu.core.util.ext.observe
 import org.koitharu.kotatsu.core.util.ext.observeEvent
 import org.koitharu.kotatsu.databinding.FragmentListSimpleBinding
 import org.koitharu.kotatsu.details.ui.DetailsActivity
-import org.koitharu.kotatsu.list.ui.MangaListSpanResolver
+import org.koitharu.kotatsu.list.ui.GridSpanResolver
 import org.koitharu.kotatsu.list.ui.adapter.ListHeaderClickListener
 import org.koitharu.kotatsu.list.ui.adapter.ListItemType
 import org.koitharu.kotatsu.list.ui.adapter.ListStateHolderListener
@@ -71,7 +72,7 @@ class BookmarksFragment :
 	) {
 		super.onViewBindingCreated(binding, savedInstanceState)
 		selectionController = ListSelectionController(
-			activity = requireActivity(),
+			appCompatDelegate = checkNotNull(findAppCompatDelegate()),
 			decoration = BookmarksSelectionDecoration(binding.root.context),
 			registryOwner = this,
 			callback = this,
@@ -85,7 +86,7 @@ class BookmarksFragment :
 		val spanSizeLookup = SpanSizeLookup()
 		with(binding.recyclerView) {
 			setHasFixedSize(true)
-			val spanResolver = MangaListSpanResolver(resources)
+			val spanResolver = GridSpanResolver(resources)
 			addItemDecoration(TypedListSpacingDecoration(context, false))
 			adapter = bookmarksAdapter
 			addOnLayoutChangeListener(spanResolver)
@@ -100,7 +101,7 @@ class BookmarksFragment :
 		}
 		viewModel.onError.observeEvent(
 			viewLifecycleOwner,
-			SnackbarErrorObserver(binding.recyclerView, this)
+			SnackbarErrorObserver(binding.recyclerView, this),
 		)
 		viewModel.onActionDone.observeEvent(viewLifecycleOwner, ReversibleActionObserver(binding.recyclerView))
 	}
@@ -206,10 +207,11 @@ class BookmarksFragment :
 	companion object {
 
 		@Deprecated(
-			"", ReplaceWith(
+			"",
+			ReplaceWith(
 				"BookmarksFragment()",
-				"org.koitharu.kotatsu.bookmarks.ui.BookmarksFragment"
-			)
+				"org.koitharu.kotatsu.bookmarks.ui.BookmarksFragment",
+			),
 		)
 		fun newInstance() = BookmarksFragment()
 	}

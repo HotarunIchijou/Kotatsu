@@ -1,80 +1,37 @@
 package org.koitharu.kotatsu.tracker.domain
 
 import androidx.annotation.VisibleForTesting
-import androidx.collection.MutableLongSet
 import coil.request.CachePolicy
+import dagger.Reusable
 import org.koitharu.kotatsu.core.model.getPreferredBranch
 import org.koitharu.kotatsu.core.parser.MangaRepository
 import org.koitharu.kotatsu.core.parser.RemoteMangaRepository
 import org.koitharu.kotatsu.core.prefs.AppSettings
-import org.koitharu.kotatsu.core.util.CompositeMutex2
+import org.koitharu.kotatsu.core.util.MultiMutex
+import org.koitharu.kotatsu.core.util.ext.toInstantOrNull
+import org.koitharu.kotatsu.favourites.domain.FavouritesRepository
 import org.koitharu.kotatsu.history.data.HistoryRepository
 import org.koitharu.kotatsu.parsers.model.Manga
+import org.koitharu.kotatsu.parsers.util.runCatchingCancellable
 import org.koitharu.kotatsu.tracker.domain.model.MangaTracking
 import org.koitharu.kotatsu.tracker.domain.model.MangaUpdates
-import org.koitharu.kotatsu.tracker.work.TrackerNotificationChannels
-import org.koitharu.kotatsu.tracker.work.TrackingItem
+import java.time.Instant
 import javax.inject.Inject
 import kotlin.contracts.InvocationKind
 import kotlin.contracts.contract
 
+@Reusable
 class Tracker @Inject constructor(
 	private val settings: AppSettings,
 	private val repository: TrackingRepository,
 	private val historyRepository: HistoryRepository,
-	private val channels: TrackerNotificationChannels,
+	private val favouritesRepository: FavouritesRepository,
 	private val mangaRepositoryFactory: MangaRepository.Factory,
 ) {
 
-	suspend fun getAllTracks(): List<TrackingItem> {
-		val sources = settings.trackSources
-		if (sources.isEmpty()) {
-			return emptyList()
-		}
-		val knownManga = MutableLongSet()
-		val result = ArrayList<TrackingItem>()
-		// Favourites
-		if (AppSettings.TRACK_FAVOURITES in sources) {
-			val favourites = repository.getAllFavouritesManga()
-			channels.updateChannels(favourites.keys)
-			for ((category, mangaList) in favourites) {
-				if (!category.isTrackingEnabled || mangaList.isEmpty()) {
-					continue
-				}
-				val categoryTracks = repository.getTracks(mangaList)
-				val channelId = if (channels.isFavouriteNotificationsEnabled(category)) {
-					channels.getFavouritesChannelId(category.id)
-				} else {
-					null
-				}
-				for (track in categoryTracks) {
-					if (knownManga.add(track.manga.id)) {
-						result.add(TrackingItem(track, channelId))
-					}
-				}
-			}
-		}
-		// History
-		if (AppSettings.TRACK_HISTORY in sources) {
-			val history = repository.getAllHistoryManga()
-			val historyTracks = repository.getTracks(history)
-			val channelId = if (channels.isHistoryNotificationsEnabled()) {
-				channels.getHistoryChannelId()
-			} else {
-				null
-			}
-			for (track in historyTracks) {
-				if (knownManga.add(track.manga.id)) {
-					result.add(TrackingItem(track, channelId))
-				}
-			}
-		}
-		result.trimToSize()
-		return result
-	}
-
-	suspend fun getTracks(ids: Set<Long>): List<TrackingItem> {
-		return getAllTracks().filterTo(ArrayList(ids.size)) { x -> x.tracking.manga.id in ids }
+	suspend fun getTracks(limit: Int): List<MangaTracking> {
+		repository.updateTracks()
+		return repository.getTracks(offset = 0, limit = limit)
 	}
 
 	suspend fun gc() {
@@ -84,15 +41,50 @@ class Tracker @Inject constructor(
 	suspend fun fetchUpdates(
 		track: MangaTracking,
 		commit: Boolean
-	): MangaUpdates.Success = withMangaLock(track.manga.id) {
-		val repo = mangaRepositoryFactory.create(track.manga.source)
-		require(repo is RemoteMangaRepository) { "Repository ${repo.javaClass.simpleName} is not supported" }
-		val manga = repo.getDetails(track.manga, CachePolicy.WRITE_ONLY)
-		val updates = compare(track, manga, getBranch(manga))
+	): MangaUpdates = withMangaLock(track.manga.id) {
+		val updates = runCatchingCancellable {
+			val repo = mangaRepositoryFactory.create(track.manga.source)
+			require(repo is RemoteMangaRepository) { "Repository ${repo.javaClass.simpleName} is not supported" }
+			val manga = repo.getDetails(track.manga, CachePolicy.WRITE_ONLY)
+			compare(track, manga, getBranch(manga))
+		}.getOrElse { error ->
+			MangaUpdates.Failure(
+				manga = track.manga,
+				error = error,
+			)
+		}
 		if (commit) {
 			repository.saveUpdates(updates)
 		}
 		return updates
+	}
+
+	suspend fun syncWithDetails(details: Manga) {
+		requireNotNull(details.chapters)
+		val track = repository.getTrackOrNull(details) ?: return
+		val updates = compare(track, details, getBranch(details))
+		repository.saveUpdates(updates)
+	}
+
+	suspend fun syncWithHistory(details: Manga, chapterId: Long) {
+		val chapters = requireNotNull(details.chapters)
+		val track = repository.getTrackOrNull(details) ?: return
+		val chapterIndex = chapters.indexOfFirst { x -> x.id == chapterId }
+		val lastNewChapterIndex = chapters.size - track.newChapters
+		val lastChapter = chapters.lastOrNull()
+		val tracking = MangaTracking(
+			manga = details,
+			lastChapterId = lastChapter?.id ?: NO_ID,
+			lastCheck = Instant.now(),
+			lastChapterDate = lastChapter?.uploadDate?.toInstantOrNull() ?: track.lastChapterDate,
+			newChapters = when {
+				track.newChapters == 0 -> 0
+				chapterIndex < 0 -> track.newChapters
+				chapterIndex >= lastNewChapterIndex -> chapters.lastIndex - chapterIndex
+				else -> track.newChapters
+			},
+		)
+		repository.mergeWith(tracking)
 	}
 
 	@VisibleForTesting
@@ -121,7 +113,7 @@ class Tracker @Inject constructor(
 	private fun compare(track: MangaTracking, manga: Manga, branch: String?): MangaUpdates.Success {
 		if (track.isEmpty()) {
 			// first check or manga was empty on last check
-			return MangaUpdates.Success(manga, emptyList(), isValid = false, channelId = null)
+			return MangaUpdates.Success(manga, emptyList(), isValid = false)
 		}
 		val chapters = requireNotNull(manga.getChapters(branch))
 		val newChapters = chapters.takeLastWhile { x -> x.id != track.lastChapterId }
@@ -131,23 +123,23 @@ class Tracker @Inject constructor(
 					manga = manga,
 					newChapters = emptyList(),
 					isValid = chapters.lastOrNull()?.id == track.lastChapterId,
-					channelId = null,
 				)
 			}
 
 			newChapters.size == chapters.size -> {
-				MangaUpdates.Success(manga, emptyList(), isValid = false, channelId = null)
+				MangaUpdates.Success(manga, emptyList(), isValid = false)
 			}
 
 			else -> {
-				MangaUpdates.Success(manga, newChapters, isValid = true, channelId = null)
+				MangaUpdates.Success(manga, newChapters, isValid = true)
 			}
 		}
 	}
 
 	private companion object {
 
-		private val mangaMutex = CompositeMutex2<Long>()
+		const val NO_ID = 0L
+		private val mangaMutex = MultiMutex<Long>()
 
 		suspend inline fun <T> withMangaLock(id: Long, action: () -> T): T {
 			contract {

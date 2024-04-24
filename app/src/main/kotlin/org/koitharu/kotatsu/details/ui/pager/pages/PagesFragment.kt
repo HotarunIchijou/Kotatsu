@@ -23,19 +23,20 @@ import org.koitharu.kotatsu.core.ui.BaseFragment
 import org.koitharu.kotatsu.core.ui.list.BoundsScrollListener
 import org.koitharu.kotatsu.core.ui.list.OnListItemClickListener
 import org.koitharu.kotatsu.core.util.RecyclerViewScrollCallback
+import org.koitharu.kotatsu.core.util.ext.dismissParentDialog
+import org.koitharu.kotatsu.core.util.ext.findParentCallback
 import org.koitharu.kotatsu.core.util.ext.observe
 import org.koitharu.kotatsu.core.util.ext.observeEvent
 import org.koitharu.kotatsu.core.util.ext.showOrHide
 import org.koitharu.kotatsu.databinding.FragmentPagesBinding
 import org.koitharu.kotatsu.details.ui.DetailsViewModel
-import org.koitharu.kotatsu.list.ui.MangaListSpanResolver
+import org.koitharu.kotatsu.list.ui.GridSpanResolver
 import org.koitharu.kotatsu.list.ui.adapter.ListItemType
 import org.koitharu.kotatsu.list.ui.adapter.TypedListSpacingDecoration
 import org.koitharu.kotatsu.list.ui.model.ListModel
 import org.koitharu.kotatsu.reader.ui.ReaderActivity.IntentBuilder
+import org.koitharu.kotatsu.reader.ui.ReaderNavigationCallback
 import org.koitharu.kotatsu.reader.ui.ReaderState
-import org.koitharu.kotatsu.reader.ui.thumbnails.PageThumbnail
-import org.koitharu.kotatsu.reader.ui.thumbnails.adapter.PageThumbnailAdapter
 import javax.inject.Inject
 import kotlin.math.roundToInt
 
@@ -54,7 +55,7 @@ class PagesFragment :
 	lateinit var settings: AppSettings
 
 	private var thumbnailsAdapter: PageThumbnailAdapter? = null
-	private var spanResolver: MangaListSpanResolver? = null
+	private var spanResolver: GridSpanResolver? = null
 	private var scrollListener: ScrollListener? = null
 
 	private val spanSizeLookup = SpanSizeLookup()
@@ -81,19 +82,19 @@ class PagesFragment :
 
 	override fun onViewBindingCreated(binding: FragmentPagesBinding, savedInstanceState: Bundle?) {
 		super.onViewBindingCreated(binding, savedInstanceState)
-		spanResolver = MangaListSpanResolver(binding.root.resources)
+		spanResolver = GridSpanResolver(binding.root.resources)
 		thumbnailsAdapter = PageThumbnailAdapter(
 			coil = coil,
 			lifecycleOwner = viewLifecycleOwner,
 			clickListener = this@PagesFragment,
 		)
+		viewModel.gridScale.observe(viewLifecycleOwner, ::onGridScaleChanged) // before rv initialization
 		with(binding.recyclerView) {
 			addItemDecoration(TypedListSpacingDecoration(context, false))
 			adapter = thumbnailsAdapter
 			setHasFixedSize(true)
 			isNestedScrollingEnabled = false
 			addOnLayoutChangeListener(spanResolver)
-			spanResolver?.setGridSize(settings.gridSize / 100f, this)
 			addOnScrollListener(ScrollListener().also { scrollListener = it })
 			(layoutManager as GridLayoutManager).let {
 				it.spanSizeLookup = spanSizeLookup
@@ -130,10 +131,17 @@ class PagesFragment :
 	override fun onWindowInsetsChanged(insets: Insets) = Unit
 
 	override fun onItemClick(item: PageThumbnail, view: View) {
-		val manga = detailsViewModel.manga.value ?: return
-		val state = ReaderState(item.page.chapterId, item.page.index, 0)
-		val intent = IntentBuilder(view.context).manga(manga).state(state).build()
-		startActivity(intent)
+		val listener = findParentCallback(ReaderNavigationCallback::class.java)
+		if (listener != null && listener.onPageSelected(item.page)) {
+			dismissParentDialog()
+		} else {
+			startActivity(
+				IntentBuilder(view.context)
+					.manga(detailsViewModel.manga.value ?: return)
+					.state(ReaderState(item.page.chapterId, item.page.index, 0))
+					.build(),
+			)
+		}
 	}
 
 	private suspend fun onThumbnailsChanged(list: List<ListModel>) {
@@ -161,6 +169,11 @@ class PagesFragment :
 		viewBinding?.recyclerView?.let {
 			scrollListener?.postInvalidate(it)
 		}
+	}
+
+	private fun onGridScaleChanged(scale: Float) {
+		spanSizeLookup.invalidateCache()
+		spanResolver?.setGridSize(scale, requireViewBinding().recyclerView)
 	}
 
 	private fun onNoChaptersChanged(isNoChapters: Boolean) {

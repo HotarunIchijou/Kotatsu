@@ -21,13 +21,11 @@ import org.koitharu.kotatsu.favourites.data.toMangaList
 import org.koitharu.kotatsu.favourites.domain.model.Cover
 import org.koitharu.kotatsu.list.domain.ListSortOrder
 import org.koitharu.kotatsu.parsers.model.Manga
-import org.koitharu.kotatsu.tracker.work.TrackerNotificationChannels
 import javax.inject.Inject
 
 @Reusable
 class FavouritesRepository @Inject constructor(
 	private val db: MangaDatabase,
-	private val channels: TrackerNotificationChannels,
 ) {
 
 	suspend fun getAllManga(): List<Manga> {
@@ -63,6 +61,12 @@ class FavouritesRepository @Inject constructor(
 	fun observeMangaCount(): Flow<Int> {
 		return db.getFavouritesDao().observeMangaCount()
 			.distinctUntilChanged()
+	}
+
+	suspend fun getCategories(): List<FavouriteCategory> {
+		return db.getFavouriteCategoriesDao().findAll().map {
+			it.toFavouriteCategory()
+		}
 	}
 
 	fun observeCategories(): Flow<List<FavouriteCategory>> {
@@ -107,6 +111,12 @@ class FavouritesRepository @Inject constructor(
 		return db.getFavouritesDao().observeIds(mangaId).map { it.toSet() }
 	}
 
+	fun observeCategories(mangaId: Long): Flow<Set<FavouriteCategory>> {
+		return db.getFavouritesDao().observeCategories(mangaId).map {
+			it.mapTo(LinkedHashSet(it.size)) { x -> x.toFavouriteCategory() }
+		}
+	}
+
 	suspend fun getCategory(id: Long): FavouriteCategory {
 		return db.getFavouriteCategoriesDao().find(id.toInt()).toFavouriteCategory()
 	}
@@ -133,7 +143,6 @@ class FavouritesRepository @Inject constructor(
 		)
 		val id = db.getFavouriteCategoriesDao().insert(entity)
 		val category = entity.toFavouriteCategory(id)
-		channels.createChannel(category)
 		return category
 	}
 
@@ -161,10 +170,6 @@ class FavouritesRepository @Inject constructor(
 				db.getFavouritesDao().deleteAll(id)
 				db.getFavouriteCategoriesDao().delete(id)
 			}
-		}
-		// run after transaction success
-		for (id in ids) {
-			channels.deleteChannel(id)
 		}
 	}
 

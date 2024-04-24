@@ -32,6 +32,7 @@ import org.koitharu.kotatsu.parsers.util.mapToSet
 import org.koitharu.kotatsu.reader.domain.ReaderColorFilter
 import java.io.File
 import java.net.Proxy
+import java.util.EnumSet
 import java.util.Locale
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -74,9 +75,16 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 	val isNavLabelsVisible: Boolean
 		get() = prefs.getBoolean(KEY_NAV_LABELS, true)
 
+	val isNavBarPinned: Boolean
+		get() = prefs.getBoolean(KEY_NAV_PINNED, false)
+
 	var gridSize: Int
 		get() = prefs.getInt(KEY_GRID_SIZE, 100)
 		set(value) = prefs.edit { putInt(KEY_GRID_SIZE, value) }
+
+	var gridSizePages: Int
+		get() = prefs.getInt(KEY_GRID_SIZE_PAGES, 100)
+		set(value) = prefs.edit { putInt(KEY_GRID_SIZE_PAGES, value) }
 
 	var historyListMode: ListMode
 		get() = prefs.getEnumValue(KEY_LIST_MODE_HISTORY, listMode)
@@ -138,6 +146,9 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 	val isTrackerWifiOnly: Boolean
 		get() = prefs.getBoolean(KEY_TRACKER_WIFI_ONLY, false)
 
+	val trackerFrequencyFactor: Float
+		get() = prefs.getString(KEY_TRACKER_FREQUENCY, null)?.toFloatOrNull() ?: 1f
+
 	val isTrackerNotificationsEnabled: Boolean
 		get() = prefs.getBoolean(KEY_TRACKER_NOTIFICATIONS, true)
 
@@ -167,6 +178,14 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 	var isHistoryGroupingEnabled: Boolean
 		get() = prefs.getBoolean(KEY_HISTORY_GROUPING, true)
 		set(value) = prefs.edit { putBoolean(KEY_HISTORY_GROUPING, value) }
+
+	var isUpdatedGroupingEnabled: Boolean
+		get() = prefs.getBoolean(KEY_UPDATED_GROUPING, true)
+		set(value) = prefs.edit { putBoolean(KEY_UPDATED_GROUPING, value) }
+
+	var isFeedHeaderVisible: Boolean
+		get() = prefs.getBoolean(KEY_FEED_HEADER, true)
+		set(value) = prefs.edit { putBoolean(KEY_FEED_HEADER, value) }
 
 	val isReadingIndicatorsEnabled: Boolean
 		get() = prefs.getBoolean(KEY_READING_INDICATORS, true)
@@ -202,6 +221,13 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		get() = prefs.getBoolean(KEY_APP_PASSWORD_NUMERIC, false)
 		set(value) = prefs.edit { putBoolean(KEY_APP_PASSWORD_NUMERIC, value) }
 
+	val searchSuggestionTypes: Set<SearchSuggestionType>
+		get() = prefs.getStringSet(KEY_SEARCH_SUGGESTION_TYPES, null)?.let { stringSet ->
+			stringSet.mapNotNullTo(EnumSet.noneOf(SearchSuggestionType::class.java)) { x ->
+				enumValueOf<SearchSuggestionType>(x)
+			}
+		} ?: EnumSet.allOf(SearchSuggestionType::class.java)
+
 	val isLoggingEnabled: Boolean
 		get() = prefs.getBoolean(KEY_LOGGING_ENABLED, false)
 
@@ -226,10 +252,19 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 
 	val defaultDetailsTab: Int
 		get() = if (isPagesTabEnabled) {
-			prefs.getString(KEY_DETAILS_TAB, null)?.toIntOrNull()?.coerceIn(0, 1) ?: 0
+			val raw = prefs.getString(KEY_DETAILS_TAB, null)?.toIntOrNull() ?: 0
+			if (raw == -1) {
+				lastDetailsTab
+			} else {
+				raw
+			}.coerceIn(0, 2)
 		} else {
 			0
 		}
+
+	var lastDetailsTab: Int
+		get() = prefs.getInt(KEY_DETAILS_LAST_TAB, 0)
+		set(value) = prefs.edit { putInt(KEY_DETAILS_LAST_TAB, value) }
 
 	val isContentPrefetchEnabled: Boolean
 		get() {
@@ -384,8 +419,12 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 	val isRelatedMangaEnabled: Boolean
 		get() = prefs.getBoolean(KEY_RELATED_MANGA, true)
 
-	val isWebtoonZoomEnable: Boolean
+	val isWebtoonZoomEnabled: Boolean
 		get() = prefs.getBoolean(KEY_WEBTOON_ZOOM, true)
+
+	var isWebtoonGapsEnabled: Boolean
+		get() = prefs.getBoolean(KEY_WEBTOON_GAPS, false)
+		set(value) = prefs.edit { putBoolean(KEY_WEBTOON_GAPS, value) }
 
 	@get:FloatRange(from = 0.0, to = 0.5)
 	val defaultWebtoonZoomOut: Float
@@ -527,6 +566,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_SEARCH_HISTORY_CLEAR = "search_history_clear"
 		const val KEY_UPDATES_FEED_CLEAR = "updates_feed_clear"
 		const val KEY_GRID_SIZE = "grid_size"
+		const val KEY_GRID_SIZE_PAGES = "grid_size_pages"
 		const val KEY_REMOTE_SOURCES = "remote_sources"
 		const val KEY_LOCAL_STORAGE = "local_storage"
 		const val KEY_READER_DOUBLE_PAGES = "reader_double_pages"
@@ -536,6 +576,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_READER_VOLUME_BUTTONS = "reader_volume_buttons"
 		const val KEY_TRACKER_ENABLED = "tracker_enabled"
 		const val KEY_TRACKER_WIFI_ONLY = "tracker_wifi"
+		const val KEY_TRACKER_FREQUENCY = "tracker_freq"
 		const val KEY_TRACK_SOURCES = "track_sources"
 		const val KEY_TRACK_CATEGORIES = "track_categories"
 		const val KEY_TRACK_WARNING = "track_warning"
@@ -561,6 +602,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_BACKUP_PERIODICAL_OUTPUT = "backup_periodic_output"
 		const val KEY_BACKUP_PERIODICAL_LAST = "backup_periodic_last"
 		const val KEY_HISTORY_GROUPING = "history_grouping"
+		const val KEY_UPDATED_GROUPING = "updated_grouping"
 		const val KEY_READING_INDICATORS = "reading_indicators"
 		const val KEY_REVERSE_CHAPTERS = "reverse_chapters"
 		const val KEY_GRID_VIEW_CHAPTERS = "grid_view_chapters"
@@ -595,6 +637,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_LOCAL_LIST_ORDER = "local_order"
 		const val KEY_HISTORY_ORDER = "history_order"
 		const val KEY_FAVORITES_ORDER = "fav_order"
+		const val KEY_WEBTOON_GAPS = "webtoon_gaps"
 		const val KEY_WEBTOON_ZOOM = "webtoon_zoom"
 		const val KEY_WEBTOON_ZOOM_OUT = "webtoon_zoom_out"
 		const val KEY_PREFETCH_CONTENT = "prefetch_content"
@@ -621,6 +664,7 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_RELATED_MANGA = "related_manga"
 		const val KEY_NAV_MAIN = "nav_main"
 		const val KEY_NAV_LABELS = "nav_labels"
+		const val KEY_NAV_PINNED = "nav_pinned"
 		const val KEY_32BIT_COLOR = "enhanced_colors"
 		const val KEY_SOURCES_ORDER = "sources_sort_order"
 		const val KEY_SOURCES_CATALOG = "sources_catalog"
@@ -631,11 +675,14 @@ class AppSettings @Inject constructor(@ApplicationContext context: Context) {
 		const val KEY_IGNORE_DOZE = "ignore_dose"
 		const val KEY_PAGES_TAB = "pages_tab"
 		const val KEY_DETAILS_TAB = "details_tab"
+		const val KEY_DETAILS_LAST_TAB = "details_last_tab"
 		const val KEY_READING_TIME = "reading_time"
 		const val KEY_PAGES_SAVE_DIR = "pages_dir"
 		const val KEY_PAGES_SAVE_ASK = "pages_dir_ask"
 		const val KEY_STATS_ENABLED = "stats_on"
 		const val KEY_APP_UPDATE = "app_update"
 		const val KEY_APP_TRANSLATION = "about_app_translation"
+		const val KEY_FEED_HEADER = "feed_header"
+		const val KEY_SEARCH_SUGGESTION_TYPES = "search_suggest_types"
 	}
 }

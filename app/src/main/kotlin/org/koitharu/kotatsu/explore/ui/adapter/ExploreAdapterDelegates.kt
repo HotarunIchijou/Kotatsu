@@ -8,12 +8,15 @@ import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.core.model.getSummary
 import org.koitharu.kotatsu.core.model.getTitle
 import org.koitharu.kotatsu.core.parser.favicon.faviconUri
+import org.koitharu.kotatsu.core.ui.BaseListAdapter
 import org.koitharu.kotatsu.core.ui.image.FaviconDrawable
 import org.koitharu.kotatsu.core.ui.image.TrimTransformation
 import org.koitharu.kotatsu.core.ui.list.AdapterDelegateClickListenerAdapter
 import org.koitharu.kotatsu.core.ui.list.OnListItemClickListener
+import org.koitharu.kotatsu.core.util.ext.defaultPlaceholders
 import org.koitharu.kotatsu.core.util.ext.enqueueWith
 import org.koitharu.kotatsu.core.util.ext.newImageRequest
+import org.koitharu.kotatsu.core.util.ext.recyclerView
 import org.koitharu.kotatsu.core.util.ext.setOnContextClickListenerCompat
 import org.koitharu.kotatsu.core.util.ext.setProgressIcon
 import org.koitharu.kotatsu.core.util.ext.source
@@ -22,10 +25,13 @@ import org.koitharu.kotatsu.databinding.ItemExploreButtonsBinding
 import org.koitharu.kotatsu.databinding.ItemExploreSourceGridBinding
 import org.koitharu.kotatsu.databinding.ItemExploreSourceListBinding
 import org.koitharu.kotatsu.databinding.ItemRecommendationBinding
+import org.koitharu.kotatsu.databinding.ItemRecommendationMangaBinding
 import org.koitharu.kotatsu.explore.ui.model.ExploreButtons
 import org.koitharu.kotatsu.explore.ui.model.MangaSourceItem
 import org.koitharu.kotatsu.explore.ui.model.RecommendationsItem
+import org.koitharu.kotatsu.list.ui.adapter.ListItemType
 import org.koitharu.kotatsu.list.ui.model.ListModel
+import org.koitharu.kotatsu.list.ui.model.MangaListModel
 import org.koitharu.kotatsu.parsers.model.Manga
 
 fun exploreButtonsAD(
@@ -51,25 +57,40 @@ fun exploreButtonsAD(
 
 fun exploreRecommendationItemAD(
 	coil: ImageLoader,
-	clickListener: View.OnClickListener,
 	itemClickListener: OnListItemClickListener<Manga>,
 	lifecycleOwner: LifecycleOwner,
 ) = adapterDelegateViewBinding<RecommendationsItem, ListModel, ItemRecommendationBinding>(
 	{ layoutInflater, parent -> ItemRecommendationBinding.inflate(layoutInflater, parent, false) },
 ) {
 
-	binding.buttonMore.setOnClickListener(clickListener)
+	val adapter = BaseListAdapter<MangaListModel>()
+		.addDelegate(ListItemType.MANGA_LIST, recommendationMangaItemAD(coil, itemClickListener, lifecycleOwner))
+	binding.pager.adapter = adapter
+	binding.pager.recyclerView?.isNestedScrollingEnabled = false
+	binding.dots.bindToViewPager(binding.pager)
+
+	bind {
+		adapter.items = item.manga
+	}
+}
+
+fun recommendationMangaItemAD(
+	coil: ImageLoader,
+	itemClickListener: OnListItemClickListener<Manga>,
+	lifecycleOwner: LifecycleOwner,
+) = adapterDelegateViewBinding<MangaListModel, MangaListModel, ItemRecommendationMangaBinding>(
+	{ layoutInflater, parent -> ItemRecommendationMangaBinding.inflate(layoutInflater, parent, false) },
+) {
+
 	binding.root.setOnClickListener { v ->
 		itemClickListener.onItemClick(item.manga, v)
 	}
 
 	bind {
 		binding.textViewTitle.text = item.manga.title
-		binding.textViewSubtitle.textAndVisible = item.summary
+		binding.textViewSubtitle.textAndVisible = item.subtitle
 		binding.imageViewCover.newImageRequest(lifecycleOwner, item.manga.coverUrl)?.run {
-			placeholder(R.drawable.ic_placeholder)
-			fallback(R.drawable.ic_placeholder)
-			error(R.drawable.ic_error_placeholder)
+			defaultPlaceholders(context)
 			allowRgb565(true)
 			transformations(TrimTransformation())
 			source(item.manga.source)
@@ -77,6 +98,7 @@ fun exploreRecommendationItemAD(
 		}
 	}
 }
+
 
 fun exploreSourceListItemAD(
 	coil: ImageLoader,

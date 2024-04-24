@@ -1,37 +1,36 @@
 package org.koitharu.kotatsu.tracker.ui.feed.adapter
 
+import androidx.core.content.ContextCompat
 import androidx.lifecycle.LifecycleOwner
 import coil.ImageLoader
 import com.hannesdorfmann.adapterdelegates4.dsl.adapterDelegateViewBinding
 import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.core.ui.list.OnListItemClickListener
+import org.koitharu.kotatsu.core.util.ext.defaultPlaceholders
+import org.koitharu.kotatsu.core.util.ext.drawableStart
 import org.koitharu.kotatsu.core.util.ext.enqueueWith
 import org.koitharu.kotatsu.core.util.ext.newImageRequest
 import org.koitharu.kotatsu.core.util.ext.source
 import org.koitharu.kotatsu.databinding.ItemFeedBinding
 import org.koitharu.kotatsu.list.ui.model.ListModel
-import org.koitharu.kotatsu.parsers.model.Manga
 import org.koitharu.kotatsu.tracker.ui.feed.model.FeedItem
 
 fun feedItemAD(
 	coil: ImageLoader,
 	lifecycleOwner: LifecycleOwner,
-	clickListener: OnListItemClickListener<Manga>,
+	clickListener: OnListItemClickListener<FeedItem>,
 ) = adapterDelegateViewBinding<FeedItem, ListModel, ItemFeedBinding>(
 	{ inflater, parent -> ItemFeedBinding.inflate(inflater, parent, false) },
 ) {
+	val indicatorNew = ContextCompat.getDrawable(context, R.drawable.ic_new)
+
 	itemView.setOnClickListener {
-		clickListener.onItemClick(item.manga, it)
+		clickListener.onItemClick(item, it)
 	}
 
 	bind {
-		val alpha = if (item.isNew) 1f else 0.5f
-		binding.textViewTitle.alpha = alpha
-		binding.textViewSummary.alpha = alpha
 		binding.imageViewCover.newImageRequest(lifecycleOwner, item.imageUrl)?.run {
-			placeholder(R.drawable.ic_placeholder)
-			fallback(R.drawable.ic_placeholder)
-			error(R.drawable.ic_error_placeholder)
+			defaultPlaceholders(context)
 			allowRgb565(true)
 			source(item.manga.source)
 			enqueueWith(coil)
@@ -42,5 +41,10 @@ fun feedItemAD(
 			item.count,
 			item.count,
 		)
+		binding.textViewSummary.drawableStart = if (item.isNew) {
+			indicatorNew
+		} else {
+			null
+		}
 	}
 }

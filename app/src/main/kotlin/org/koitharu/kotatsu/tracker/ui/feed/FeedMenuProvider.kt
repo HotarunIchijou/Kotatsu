@@ -8,7 +8,6 @@ import android.view.View
 import androidx.core.view.MenuProvider
 import org.koitharu.kotatsu.R
 import org.koitharu.kotatsu.core.ui.dialog.CheckBoxAlertDialog
-import org.koitharu.kotatsu.tracker.ui.updates.UpdatesActivity
 
 class FeedMenuProvider(
 	private val snackbarHost: View,
@@ -22,9 +21,19 @@ class FeedMenuProvider(
 		menuInflater.inflate(R.menu.opt_feed, menu)
 	}
 
+	override fun onPrepareMenu(menu: Menu) {
+		super.onPrepareMenu(menu)
+		menu.findItem(R.id.action_show_updated)?.isChecked = viewModel.isHeaderEnabled.value
+	}
+
 	override fun onMenuItemSelected(menuItem: MenuItem): Boolean = when (menuItem.itemId) {
 		R.id.action_update -> {
 			viewModel.update()
+			true
+		}
+
+		R.id.action_show_updated -> {
+			viewModel.setHeaderEnabled(!menuItem.isChecked)
 			true
 		}
 
@@ -38,11 +47,6 @@ class FeedMenuProvider(
 				.setPositiveButton(R.string.clear) { _, isChecked ->
 					viewModel.clearFeed(isChecked)
 				}.create().show()
-			true
-		}
-
-		R.id.action_updated -> {
-			context.startActivity(UpdatesActivity.newIntent(context))
 			true
 		}
 

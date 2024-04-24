@@ -10,11 +10,11 @@ import androidx.appcompat.view.ActionMode
 import androidx.core.graphics.Insets
 import androidx.core.view.isVisible
 import androidx.fragment.app.activityViewModels
-import androidx.lifecycle.Lifecycle
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import com.google.android.material.snackbar.Snackbar
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.firstOrNull
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import org.koitharu.kotatsu.R
@@ -22,11 +22,12 @@ import org.koitharu.kotatsu.core.ui.BaseFragment
 import org.koitharu.kotatsu.core.ui.list.ListSelectionController
 import org.koitharu.kotatsu.core.ui.list.OnListItemClickListener
 import org.koitharu.kotatsu.core.util.RecyclerViewScrollCallback
+import org.koitharu.kotatsu.core.util.ext.dismissParentDialog
+import org.koitharu.kotatsu.core.util.ext.findAppCompatDelegate
+import org.koitharu.kotatsu.core.util.ext.findParentCallback
 import org.koitharu.kotatsu.core.util.ext.observe
 import org.koitharu.kotatsu.core.util.ext.observeEvent
 import org.koitharu.kotatsu.databinding.FragmentChaptersBinding
-import org.koitharu.kotatsu.details.ui.ChaptersMenuProvider
-import org.koitharu.kotatsu.details.ui.DetailsActivity
 import org.koitharu.kotatsu.details.ui.DetailsViewModel
 import org.koitharu.kotatsu.details.ui.adapter.ChaptersAdapter
 import org.koitharu.kotatsu.details.ui.adapter.ChaptersSelectionDecoration
@@ -37,6 +38,7 @@ import org.koitharu.kotatsu.list.ui.model.ListModel
 import org.koitharu.kotatsu.local.ui.LocalChaptersRemoveService
 import org.koitharu.kotatsu.parsers.model.MangaSource
 import org.koitharu.kotatsu.reader.ui.ReaderActivity.IntentBuilder
+import org.koitharu.kotatsu.reader.ui.ReaderNavigationCallback
 import org.koitharu.kotatsu.reader.ui.ReaderState
 import kotlin.math.roundToInt
 
@@ -59,7 +61,7 @@ class ChaptersFragment :
 		super.onViewBindingCreated(binding, savedInstanceState)
 		chaptersAdapter = ChaptersAdapter(this)
 		selectionController = ListSelectionController(
-			activity = requireActivity(),
+			appCompatDelegate = checkNotNull(findAppCompatDelegate()),
 			decoration = ChaptersSelectionDecoration(binding.root.context),
 			registryOwner = this,
 			callback = this,
@@ -89,14 +91,11 @@ class ChaptersFragment :
 		viewModel.isChaptersEmpty.observe(viewLifecycleOwner) {
 			binding.textViewHolder.isVisible = it
 		}
-		viewModel.onSelectChapter.observeEvent(viewLifecycleOwner) {
-			selectionController?.onItemLongClick(it)
-		}
-		val detailsActivity = activity as? DetailsActivity
-		if (detailsActivity != null) {
-			val menuProvider = ChaptersMenuProvider(viewModel, detailsActivity.bottomSheetMediator)
-			activity?.onBackPressedDispatcher?.addCallback(menuProvider)
-			detailsActivity.secondaryMenuHost.addMenuProvider(menuProvider, viewLifecycleOwner, Lifecycle.State.RESUMED)
+		viewModel.onSelectChapter.observeEvent(viewLifecycleOwner) { chapterId ->
+			chaptersAdapter?.observeItems()?.firstOrNull { items ->
+				items.any { x -> x is ChapterListItem && x.chapter.id == chapterId }
+			}
+			selectionController?.onItemLongClick(chapterId)
 		}
 	}
 
@@ -121,12 +120,17 @@ class ChaptersFragment :
 		if (selectionController?.onItemClick(item.chapter.id) == true) {
 			return
 		}
-		startActivity(
-			IntentBuilder(view.context)
-				.manga(viewModel.manga.value ?: return)
-				.state(ReaderState(item.chapter.id, 0, 0))
-				.build(),
-		)
+		val listener = findParentCallback(ReaderNavigationCallback::class.java)
+		if (listener != null && listener.onChapterSelected(item.chapter)) {
+			dismissParentDialog()
+		} else {
+			startActivity(
+				IntentBuilder(view.context)
+					.manga(viewModel.manga.value ?: return)
+					.state(ReaderState(item.chapter.id, 0, 0))
+					.build(),
+			)
+		}
 	}
 
 	override fun onItemLongClick(item: ChapterListItem, view: View): Boolean {

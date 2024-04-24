@@ -4,15 +4,16 @@
 	xmlns:app="http://schemas.android.com/apk/res-auto">
 
 	<item
-		android:id="@+id/action_updated"
-		android:orderInCategory="50"
-		android:title="@string/updated"
-		app:showAsAction="never" />
-
-	<item
 		android:id="@+id/action_update"
 		android:orderInCategory="50"
 		android:title="@string/update"
+		app:showAsAction="never" />
+
+	<item
+		android:id="@+id/action_show_updated"
+		android:checkable="true"
+		android:orderInCategory="50"
+		android:title="@string/show_updated"
 		app:showAsAction="never" />
 
 	<item

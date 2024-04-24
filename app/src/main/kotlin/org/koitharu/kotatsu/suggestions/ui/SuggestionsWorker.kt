@@ -1,11 +1,12 @@
 package org.koitharu.kotatsu.suggestions.ui
 
-import android.annotation.SuppressLint
+import android.Manifest
 import android.app.PendingIntent
 import android.content.Context
 import android.content.pm.ServiceInfo
 import android.os.Build
 import androidx.annotation.FloatRange
+import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationChannelCompat
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -50,10 +51,12 @@ import org.koitharu.kotatsu.core.prefs.AppSettings
 import org.koitharu.kotatsu.core.util.ext.almostEquals
 import org.koitharu.kotatsu.core.util.ext.asArrayList
 import org.koitharu.kotatsu.core.util.ext.awaitUniqueWorkInfoByName
+import org.koitharu.kotatsu.core.util.ext.awaitWorkInfosByTag
 import org.koitharu.kotatsu.core.util.ext.checkNotificationPermission
 import org.koitharu.kotatsu.core.util.ext.flatten
 import org.koitharu.kotatsu.core.util.ext.printStackTraceDebug
 import org.koitharu.kotatsu.core.util.ext.sanitize
+import org.koitharu.kotatsu.core.util.ext.sizeOrZero
 import org.koitharu.kotatsu.core.util.ext.takeMostFrequent
 import org.koitharu.kotatsu.core.util.ext.toBitmapOrNull
 import org.koitharu.kotatsu.core.util.ext.trySetForeground
@@ -189,7 +192,9 @@ class SuggestionsWorker @AssistedInject constructor(
 			.sortedBy { it.relevance }
 			.take(MAX_RESULTS)
 		suggestionRepository.replace(suggestions)
-		if (appSettings.isSuggestionsNotificationAvailable && applicationContext.checkNotificationPermission()) {
+		if (appSettings.isSuggestionsNotificationAvailable
+			&& applicationContext.checkNotificationPermission(MANGA_CHANNEL_ID)
+		) {
 			for (i in 0..3) {
 				try {
 					val manga = suggestions[Random.nextInt(0, suggestions.size / 3)]
@@ -252,7 +257,7 @@ class SuggestionsWorker @AssistedInject constructor(
 		e.printStackTraceDebug()
 	}.getOrDefault(emptyList())
 
-	@SuppressLint("MissingPermission")
+	@RequiresPermission(Manifest.permission.POST_NOTIFICATIONS)
 	private suspend fun showNotification(manga: Manga) {
 		val channel = NotificationChannelCompat.Builder(MANGA_CHANNEL_ID, NotificationManagerCompat.IMPORTANCE_DEFAULT)
 			.setName(applicationContext.getString(R.string.suggestions))
@@ -269,6 +274,7 @@ class SuggestionsWorker @AssistedInject constructor(
 		with(builder) {
 			setContentText(tagsText)
 			setContentTitle(title)
+			setGroup(GROUP_SUGGESTION)
 			setLargeIcon(
 				coil.execute(
 					ImageRequest.Builder(applicationContext)
@@ -284,7 +290,7 @@ class SuggestionsWorker @AssistedInject constructor(
 				style.bigText(
 					buildSpannedString {
 						append(tagsText)
-						val chaptersCount = manga.chapters?.size ?: 0
+						val chaptersCount = manga.chapters.sizeOrZero()
 						appendLine()
 						bold {
 							append(
@@ -393,7 +399,10 @@ class SuggestionsWorker @AssistedInject constructor(
 				.any { !it.state.isFinished }
 		}
 
-		fun startNow() {
+		suspend fun startNow() {
+			if (workManager.awaitWorkInfosByTag(TAG_ONESHOT).any { !it.state.isFinished }) {
+				return
+			}
 			val constraints = Constraints.Builder()
 				.setRequiredNetworkType(NetworkType.CONNECTED)
 				.build()
@@ -402,7 +411,7 @@ class SuggestionsWorker @AssistedInject constructor(
 				.addTag(TAG_ONESHOT)
 				.setExpedited(OutOfQuotaPolicy.RUN_AS_NON_EXPEDITED_WORK_REQUEST)
 				.build()
-			workManager.enqueue(request)
+			workManager.enqueue(request).await()
 		}
 
 		private fun createConstraints() = Constraints.Builder()
@@ -418,6 +427,7 @@ class SuggestionsWorker @AssistedInject constructor(
 		const val DATA_COUNT = "count"
 		const val WORKER_CHANNEL_ID = "suggestion_worker"
 		const val MANGA_CHANNEL_ID = "suggestions"
+		const val GROUP_SUGGESTION = "org.koitharu.kotatsu.SUGGESTIONS"
 		const val WORKER_NOTIFICATION_ID = 36
 		const val MAX_RESULTS = 80
 		const val MAX_PARALLELISM = 3

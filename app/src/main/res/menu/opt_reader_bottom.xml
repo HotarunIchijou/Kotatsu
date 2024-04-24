@@ -6,23 +6,18 @@
 	tools:ignore="AlwaysShowAction">
 
 	<item
-		android:id="@+id/action_bookmark"
-		android:icon="@drawable/ic_bookmark"
-		android:title="@string/bookmark_add"
-		android:visible="false"
-		app:showAsAction="always" />
-
-	<item
 		android:id="@+id/action_pages_thumbs"
 		android:icon="@drawable/ic_grid"
 		android:title="@string/pages"
 		android:visible="false"
-		app:showAsAction="always" />
+		app:showAsAction="always"
+		tools:visible="true" />
 
 	<item
 		android:id="@+id/action_options"
 		android:icon="@drawable/abc_ic_menu_overflow_material"
 		android:title="@string/options"
-		app:showAsAction="always" />
+		app:showAsAction="always"
+		tools:visible="true" />
 
 </menu>

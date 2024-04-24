@@ -72,7 +72,7 @@ abstract class BaseActivity<B : ViewBinding> :
 		onBackPressedDispatcher.addCallback(actionModeDelegate)
 	}
 
-	override fun onNewIntent(intent: Intent?) {
+	override fun onNewIntent(intent: Intent) {
 		putDataToExtras(intent)
 		super.onNewIntent(intent)
 	}
@@ -127,11 +127,13 @@ abstract class BaseActivity<B : ViewBinding> :
 		val actionModeColor = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
 			ColorUtils.compositeColors(
 				ContextCompat.getColor(this, com.google.android.material.R.color.m3_appbar_overlay_color),
-				getThemeColor(R.attr.m3ColorBackground),
+				getThemeColor(com.google.android.material.R.attr.colorSurface),
 			)
 		} else {
-			ContextCompat.getColor(this, R.color.kotatsu_m3_background)
+			ContextCompat.getColor(this, R.color.kotatsu_background)
 		}
+		defaultStatusBarColor = window.statusBarColor
+		window.statusBarColor = actionModeColor
 		val insets = ViewCompat.getRootWindowInsets(viewBinding.root)
 			?.getInsets(WindowInsetsCompat.Type.systemBars()) ?: return
 		findViewById<ActionBarContextView?>(androidx.appcompat.R.id.action_mode_bar).apply {
@@ -140,8 +142,6 @@ abstract class BaseActivity<B : ViewBinding> :
 				topMargin = insets.top
 			}
 		}
-		defaultStatusBarColor = window.statusBarColor
-		window.statusBarColor = actionModeColor
 	}
 
 	@CallSuper

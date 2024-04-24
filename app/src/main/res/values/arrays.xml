@@ -67,10 +67,6 @@
 		<item>@string/system_default</item>
 		<item>@string/advanced</item>
 	</string-array>
-	<string-array name="first_nav_item" translatable="false">
-		<item>@string/history</item>
-		<item>@string/favourites</item>
-	</string-array>
 	<string-array name="backup_frequency" translatable="false">
 		<item>@string/frequency_every_day</item>
 		<item>@string/frequency_every_2_days</item>
@@ -79,12 +75,19 @@
 		<item>@string/frequency_once_per_month</item>
 	</string-array>
 	<string-array name="details_tabs" translatable="false">
+		<item>@string/last_used</item>
 		<item>@string/chapters</item>
 		<item>@string/pages</item>
+		<item>@string/bookmarks</item>
 	</string-array>
 	<string-array name="download_formats" translatable="false">
 		<item>@string/automatic</item>
 		<item>@string/single_cbz_file</item>
 		<item>@string/multiple_cbz_files</item>
+	</string-array>
+	<string-array name="tracker_frequency" translatable="false">
+		<item>@string/less_frequently</item>
+		<item>@string/system_default</item>
+		<item>@string/more_frequently</item>
 	</string-array>
 </resources>

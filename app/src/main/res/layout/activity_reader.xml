@@ -36,7 +36,6 @@
 		android:id="@+id/appbar_top"
 		android:layout_width="match_parent"
 		android:layout_height="wrap_content"
-		android:background="?m3ColorBottomMenuBackground"
 		android:elevation="@dimen/m3_card_elevated_elevation"
 		app:elevation="@dimen/m3_card_elevated_elevation"
 		app:liftOnScroll="false">
@@ -59,7 +58,7 @@
 		android:layout_height="wrap_content"
 		android:layout_gravity="bottom"
 		android:layout_margin="8dp"
-		app:cardBackgroundColor="?m3ColorBottomMenuBackground"
+		app:cardBackgroundColor="?colorBackgroundFloating"
 		app:layout_insetEdge="bottom">
 
 		<com.google.android.material.appbar.MaterialToolbar
@@ -75,7 +74,9 @@
 				android:stepSize="1.0"
 				android:valueFrom="0"
 				app:labelBehavior="floating"
-				app:trackColorInactive="?attr/m3ColorBackground" />
+				app:tickVisible="true"
+				tools:value="6"
+				tools:valueTo="20" />
 
 		</com.google.android.material.appbar.MaterialToolbar>
 
@@ -100,8 +101,12 @@
 		android:layout_width="wrap_content"
 		android:layout_height="wrap_content"
 		android:layout_gravity="center"
+		android:background="@drawable/bg_card"
+		android:backgroundTint="?colorBackgroundFloating"
 		android:gravity="center_horizontal"
-		android:orientation="vertical">
+		android:orientation="vertical"
+		android:outlineProvider="background"
+		android:padding="@dimen/screen_padding">
 
 		<com.google.android.material.progressindicator.CircularProgressIndicator
 			android:id="@+id/progressBar"
@@ -113,9 +118,9 @@
 			android:id="@+id/textView_loading"
 			android:layout_width="wrap_content"
 			android:layout_height="wrap_content"
-			android:layout_marginTop="8dp"
+			android:layout_marginTop="10dp"
 			android:text="@string/loading_"
-			android:textAppearance="?attr/textAppearanceBody2" />
+			android:textAppearance="?attr/textAppearanceTitleMedium" />
 
 	</LinearLayout>
 

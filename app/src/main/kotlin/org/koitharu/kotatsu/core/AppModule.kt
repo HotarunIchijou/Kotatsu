@@ -40,9 +40,9 @@ import org.koitharu.kotatsu.core.parser.favicon.FaviconFetcher
 import org.koitharu.kotatsu.core.ui.image.CoilImageGetter
 import org.koitharu.kotatsu.core.ui.util.ActivityRecreationHandle
 import org.koitharu.kotatsu.core.util.AcraScreenLogger
-import org.koitharu.kotatsu.core.util.IncognitoModeIndicator
 import org.koitharu.kotatsu.core.util.ext.connectivityManager
 import org.koitharu.kotatsu.core.util.ext.isLowRamDevice
+import org.koitharu.kotatsu.details.ui.pager.pages.MangaPageFetcher
 import org.koitharu.kotatsu.local.data.CacheDir
 import org.koitharu.kotatsu.local.data.CbzFetcher
 import org.koitharu.kotatsu.local.data.LocalStorageChanges
@@ -50,7 +50,6 @@ import org.koitharu.kotatsu.local.domain.model.LocalManga
 import org.koitharu.kotatsu.main.domain.CoverRestoreInterceptor
 import org.koitharu.kotatsu.main.ui.protect.AppProtectHelper
 import org.koitharu.kotatsu.parsers.MangaLoaderContext
-import org.koitharu.kotatsu.reader.ui.thumbnails.MangaPageFetcher
 import org.koitharu.kotatsu.search.ui.MangaSuggestionsProvider
 import org.koitharu.kotatsu.settings.backup.BackupObserver
 import org.koitharu.kotatsu.sync.domain.SyncController
@@ -147,12 +146,10 @@ interface AppModule {
 		fun provideActivityLifecycleCallbacks(
 			appProtectHelper: AppProtectHelper,
 			activityRecreationHandle: ActivityRecreationHandle,
-			incognitoModeIndicator: IncognitoModeIndicator,
 			acraScreenLogger: AcraScreenLogger,
 		): Set<@JvmSuppressWildcards Application.ActivityLifecycleCallbacks> = arraySetOf(
 			appProtectHelper,
 			activityRecreationHandle,
-			incognitoModeIndicator,
 			acraScreenLogger,
 		)
 

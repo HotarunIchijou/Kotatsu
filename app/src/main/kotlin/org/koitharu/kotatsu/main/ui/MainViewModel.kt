@@ -4,12 +4,13 @@ import androidx.lifecycle.viewModelScope
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.plus
 import org.koitharu.kotatsu.core.exceptions.EmptyHistoryException
 import org.koitharu.kotatsu.core.github.AppUpdateRepository
 import org.koitharu.kotatsu.core.prefs.AppSettings
-import org.koitharu.kotatsu.core.prefs.observeAsStateFlow
+import org.koitharu.kotatsu.core.prefs.observeAsFlow
 import org.koitharu.kotatsu.core.ui.BaseViewModel
 import org.koitharu.kotatsu.core.util.ext.MutableEventFlow
 import org.koitharu.kotatsu.core.util.ext.call
@@ -33,22 +34,25 @@ class MainViewModel @Inject constructor(
 	val onOpenReader = MutableEventFlow<Manga>()
 	val onFirstStart = MutableEventFlow<Unit>()
 
-	val isResumeEnabled = readingResumeEnabledUseCase().stateIn(
-		scope = viewModelScope + Dispatchers.Default,
-		started = SharingStarted.WhileSubscribed(5000),
-		initialValue = false,
-	)
-
-	val isIncognitoMode = settings.observeAsStateFlow(
-		scope = viewModelScope + Dispatchers.Default,
-		key = AppSettings.KEY_INCOGNITO_MODE,
-		valueProducer = { isIncognitoModeEnabled },
-	)
+	val isResumeEnabled = readingResumeEnabledUseCase()
+		.withErrorHandling()
+		.stateIn(
+			scope = viewModelScope + Dispatchers.Default,
+			started = SharingStarted.WhileSubscribed(5000),
+			initialValue = false,
+		)
 
 	val appUpdate = appUpdateRepository.observeAvailableUpdate()
 
-	val feedCounter = trackingRepository.observeUpdatedMangaCount()
+	val feedCounter = trackingRepository.observeUnreadUpdatesCount()
+		.withErrorHandling()
 		.stateIn(viewModelScope + Dispatchers.Default, SharingStarted.Lazily, 0)
+
+	val isBottomNavPinned = settings.observeAsFlow(
+		AppSettings.KEY_NAV_PINNED,
+	) {
+		isNavBarPinned
+	}.flowOn(Dispatchers.Default)
 
 	init {
 		launchJob {

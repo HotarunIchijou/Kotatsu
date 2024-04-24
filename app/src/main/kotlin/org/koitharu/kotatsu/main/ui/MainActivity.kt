@@ -7,13 +7,16 @@ import android.os.Bundle
 import android.view.Menu
 import android.view.MenuItem
 import android.view.View
+import android.view.ViewGroup.MarginLayoutParams
 import androidx.activity.OnBackPressedCallback
 import androidx.activity.viewModels
 import androidx.appcompat.view.ActionMode
 import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
 import androidx.core.graphics.Insets
+import androidx.core.view.children
 import androidx.core.view.inputmethod.EditorInfoCompat
+import androidx.core.view.isInvisible
 import androidx.core.view.isVisible
 import androidx.core.view.updateLayoutParams
 import androidx.core.view.updatePadding
@@ -42,6 +45,7 @@ import org.koitharu.kotatsu.core.ui.util.MenuInvalidator
 import org.koitharu.kotatsu.core.ui.util.OptionsMenuBadgeHelper
 import org.koitharu.kotatsu.core.ui.widgets.SlidingBottomNavigationView
 import org.koitharu.kotatsu.core.util.ext.hideKeyboard
+import org.koitharu.kotatsu.core.util.ext.measureHeight
 import org.koitharu.kotatsu.core.util.ext.observe
 import org.koitharu.kotatsu.core.util.ext.observeEvent
 import org.koitharu.kotatsu.core.util.ext.scaleUpActivityOptionsOf
@@ -130,9 +134,7 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), AppBarOwner, BottomNav
 		viewModel.onFirstStart.observeEvent(this) {
 			WelcomeSheet.show(supportFragmentManager)
 		}
-		viewModel.isIncognitoMode.observe(this) {
-			adjustSearchUI(isSearchOpened(), false)
-		}
+		viewModel.isBottomNavPinned.observe(this, ::setNavbarPinned)
 		searchSuggestionViewModel.isIncognitoModeEnabled.observe(this, this::onIncognitoModeChanged)
 	}
 
@@ -262,12 +264,14 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), AppBarOwner, BottomNav
 		super.onSupportActionModeStarted(mode)
 		adjustFabVisibility()
 		bottomNav?.hide()
+		viewBinding.toolbarCard.isInvisible = true
 	}
 
 	override fun onSupportActionModeFinished(mode: ActionMode) {
 		super.onSupportActionModeFinished(mode)
 		adjustFabVisibility()
 		bottomNav?.show()
+		viewBinding.toolbarCard.isInvisible = false
 	}
 
 	private fun onOpenReader(manga: Manga) {
@@ -368,10 +372,10 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), AppBarOwner, BottomNav
 		adjustFabVisibility(isSearchOpened = isOpened)
 		supportActionBar?.apply {
 			setHomeAsUpIndicator(
-				when {
-					isOpened -> materialR.drawable.abc_ic_ab_back_material
-					viewModel.isIncognitoMode.value -> R.drawable.ic_incognito
-					else -> materialR.drawable.abc_ic_search_api_material
+				if (isOpened) {
+					materialR.drawable.abc_ic_ab_back_material
+				} else {
+					materialR.drawable.abc_ic_search_api_material
 				},
 			)
 			setHomeActionContentDescription(
@@ -396,6 +400,30 @@ class MainActivity : BaseActivity<ActivityMainBinding>(), AppBarOwner, BottomNav
 				arrayOf(Manifest.permission.POST_NOTIFICATIONS),
 				1,
 			)
+		}
+	}
+
+	private fun setNavbarPinned(isPinned: Boolean) {
+		val bottomNavBar = viewBinding.bottomNav
+		bottomNavBar?.isPinned = isPinned
+		for (view in viewBinding.appbar.children) {
+			val lp = view.layoutParams as? AppBarLayout.LayoutParams ?: continue
+			val scrollFlags = if (isPinned) {
+				lp.scrollFlags and SCROLL_FLAG_SCROLL.inv()
+			} else {
+				lp.scrollFlags or SCROLL_FLAG_SCROLL
+			}
+			if (scrollFlags != lp.scrollFlags) {
+				lp.scrollFlags = scrollFlags
+				view.layoutParams = lp
+			}
+		}
+		viewBinding.container.updateLayoutParams<MarginLayoutParams> {
+			bottomMargin = if (isPinned) {
+				bottomNavBar?.measureHeight() ?: 0
+			} else {
+				0
+			}
 		}
 	}
 

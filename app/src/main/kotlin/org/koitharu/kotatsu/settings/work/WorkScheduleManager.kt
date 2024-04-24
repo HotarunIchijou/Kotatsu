@@ -22,6 +22,7 @@ class WorkScheduleManager @Inject constructor(
 	override fun onSharedPreferenceChanged(sharedPreferences: SharedPreferences?, key: String?) {
 		when (key) {
 			AppSettings.KEY_TRACKER_ENABLED,
+			AppSettings.KEY_TRACKER_FREQUENCY,
 			AppSettings.KEY_TRACKER_WIFI_ONLY -> updateWorker(
 				scheduler = trackerScheduler,
 				isEnabled = settings.isTrackerEnabled,
@@ -47,7 +48,7 @@ class WorkScheduleManager @Inject constructor(
 	fun init() {
 		settings.subscribe(this)
 		processLifecycleScope.launch(Dispatchers.Default) {
-			updateWorkerImpl(trackerScheduler, settings.isTrackerEnabled, false)
+			updateWorkerImpl(trackerScheduler, settings.isTrackerEnabled, true) // always force due to adaptive interval
 			updateWorkerImpl(suggestionScheduler, settings.isSuggestionsEnabled, false)
 			updateWorkerImpl(periodicalBackupScheduler, settings.isPeriodicalBackupEnabled, false)
 		}
