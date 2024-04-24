@@ -2,7 +2,7 @@
 
 	<!--Toolbars-->
 
-	<style name="Widget.Kotatsu.CollapsingToolbar" parent="@style/Widget.Material3.CollapsingToolbar.Medium" />
+	<style name="Widget.Kotatsu.CollapsingToolbar" parent="Widget.Material3.CollapsingToolbar.Large" />
 
 	<style name="Widget.Kotatsu.AppBarLayout" parent="@style/Widget.Material3.AppBarLayout">
 		<item name="android:background">?attr/m3ColorBackground</item>
@@ -235,8 +235,8 @@
 	</style>
 
 	<style name="ThemeOverlay.Kotatsu.ActionMode" parent="">
-		<item name="colorOnSurface">?colorPrimary</item>
-		<item name="colorControlNormal">?colorPrimary</item>
+		<item name="colorOnSurface">@color/kotatsu_onSurface</item>
+		<item name="colorControlNormal">@color/kotatsu_onSurface</item>
 	</style>
 
 	<!-- TextAppearance -->
