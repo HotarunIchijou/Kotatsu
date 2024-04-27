@@ -241,15 +241,15 @@
 	<!-- Shapes -->
 
 	<style name="ShapeAppearanceOverlay.Kotatsu.Cover" parent="">
-		<item name="cornerSize">12dp</item>
+		<item name="cornerSize">16dp</item>
 	</style>
 
 	<style name="ShapeAppearanceOverlay.Kotatsu.Cover.Medium" parent="">
-		<item name="cornerSize">8dp</item>
+		<item name="cornerSize">12dp</item>
 	</style>
 
 	<style name="ShapeAppearanceOverlay.Kotatsu.Cover.Small" parent="">
-		<item name="cornerSize">4dp</item>
+		<item name="cornerSize">8dp</item>
 	</style>
 
 	<style name="ShapeAppearanceOverlay.Kotatsu.Circle" parent="">
