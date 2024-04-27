@@ -2,7 +2,9 @@
 
 	<!--Toolbars-->
 
-	<style name="Widget.Kotatsu.CollapsingToolbar" parent="Widget.Material3.CollapsingToolbar.Large" />
+	<style name="Widget.Kotatsu.CollapsingToolbar" parent="Widget.Material3.CollapsingToolbar.Large">
+		<item name="expandedTitleTextAppearance">@style/TextAppearance.Material3.HeadlineLarge</item>
+	</style>
 
 	<style name="Widget.Kotatsu.AppBarLayout" parent="@style/Widget.Material3.AppBarLayout">
 		<item name="android:background">?attr/colorSurface</item>
