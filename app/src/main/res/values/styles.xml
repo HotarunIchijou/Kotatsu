@@ -200,8 +200,8 @@
 	</style>
 
 	<style name="ThemeOverlay.Kotatsu.ActionMode" parent="">
-		<item name="colorOnSurface">?colorPrimary</item>
-		<item name="colorControlNormal">?colorPrimary</item>
+		<item name="colorOnSurface">@color/kotatsu_onSurface</item>
+		<item name="colorControlNormal">@color/kotatsu_onSurface</item>
 	</style>
 
 	<!-- TextAppearance -->
